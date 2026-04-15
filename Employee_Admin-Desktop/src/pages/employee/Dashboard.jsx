@@ -14,6 +14,7 @@ import {
   FileText,
   CreditCard,
   User,
+  UserCheck,
   ArrowRight
 } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';

@@ -14,7 +14,7 @@ import {
   Cpu,
   Database,
   Lock,
-  Globe
+  ArrowRight
 } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
 import useAuthStore from '../../store/authStore';
