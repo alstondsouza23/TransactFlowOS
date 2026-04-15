@@ -1,6 +1,7 @@
-@import "tailwindcss";
-
+/* Google Fonts must come before all other @import statements */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
 
 @theme {
   --font-sans: 'Inter', sans-serif;
