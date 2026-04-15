@@ -130,7 +130,7 @@ export default function EmployeeDashboard() {
 
   return (
     <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter">
-      <Sidebar />
+      <Sidebar activePage="Ops Dashboard" />
       
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Top Header */}

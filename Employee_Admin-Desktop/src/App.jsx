@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import AdminDashboard from './pages/admin/Dashboard';
 import EmployeeDashboard from './pages/employee/Dashboard';
+import KYCApprovals from './pages/employee/KYCApprovals';
 
 function App() {
   return (
@@ -31,6 +32,15 @@ function App() {
             element={
               <ProtectedRoute allowedRole="employee">
                 <EmployeeDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/employee/kyc-approvals"
+            element={
+              <ProtectedRoute allowedRole="employee">
+                <KYCApprovals />
               </ProtectedRoute>
             }
           />
