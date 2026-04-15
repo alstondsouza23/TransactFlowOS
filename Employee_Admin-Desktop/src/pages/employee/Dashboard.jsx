@@ -1,243 +1,302 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import {
-  ShieldCheck, CreditCard, Inbox, FileText,
-  LogOut, Bell, CheckCircle2, Clock, ChevronRight,
-  TrendingUp, UserCircle2, ArrowDownCircle,
+import { 
+  Bell, 
+  Search, 
+  TrendingUp, 
+  TrendingDown, 
+  ArrowUpRight, 
+  ArrowDownRight,
+  ChevronRight,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  FileText,
+  CreditCard,
+  User,
+  ArrowRight
 } from 'lucide-react';
-import { auth } from '../../firebase/firebaseConfig';
+import Sidebar from '../../components/Sidebar';
 import useAuthStore from '../../store/authStore';
 
-const stats = [
-  {
-    label: 'My Loan Applications',
-    value: '3',
-    delta: '1 pending review',
-    positive: null,
-    icon: FileText,
-    color: '#1a2f55',
-    bg: '#eef1f8',
-  },
-  {
-    label: 'KYC Status',
-    value: 'Verified',
-    delta: 'Last updated 3 days ago',
-    positive: true,
-    icon: CheckCircle2,
-    color: '#065f46',
-    bg: '#d1fae5',
-  },
-  {
-    label: 'Inbox Messages',
-    value: '7',
-    delta: '2 unread',
-    positive: false,
-    icon: Inbox,
-    color: '#b45309',
-    bg: '#fef3c7',
-  },
-  {
-    label: 'Disbursements',
-    value: '₹ 2.4L',
-    delta: 'This quarter',
-    positive: true,
-    icon: ArrowDownCircle,
-    color: '#1d4ed8',
-    bg: '#dbeafe',
-  },
-];
+// --- Sub-components (internal to keep this demo clean but robust) ---
 
-const recentActivity = [
-  { action: 'Loan application submitted',    time: '1 hr ago',   status: 'pending'  },
-  { action: 'KYC document uploaded',         time: '2 hrs ago',  status: 'success'  },
-  { action: 'Inbox message from Admin',      time: '5 hrs ago',  status: 'info'     },
-  { action: 'EMI payment processed',         time: 'Yesterday',  status: 'success'  },
-  { action: 'Default tracker entry updated', time: '2 days ago', status: 'pending'  },
-];
+const StatCard = ({ title, value, trend, isUp, sparklineColor, sparklinePath }) => (
+  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-50 flex flex-col gap-4 relative overflow-hidden group hover:shadow-md transition-shadow">
+    <div className="flex justify-between items-start">
+      <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{title}</h4>
+      <div className={`flex items-center gap-1 text-[11px] font-bold ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+        {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+        {trend}
+      </div>
+    </div>
+    
+    <div className="flex items-end justify-between">
+      <span className="text-3xl font-extrabold text-slate-800 tracking-tight">{value}</span>
+    </div>
 
-const statusMap = {
-  success: { label: 'Done',    bg: '#d1fae5', color: '#065f46' },
-  pending: { label: 'Pending', bg: '#fef3c7', color: '#92400e' },
-  info:    { label: 'New',     bg: '#dbeafe', color: '#1e40af' },
-};
+    {/* Simple Sparkline SVG mimic */}
+    <div className="h-12 w-full mt-2">
+      <svg className="w-full h-full" preserveAspectRatio="none">
+        <path 
+          d={sparklinePath} 
+          fill="none" 
+          stroke={sparklineColor} 
+          strokeWidth="2" 
+          strokeLinecap="round"
+          className="opacity-80 group-hover:opacity-100 transition-opacity"
+        />
+        <defs>
+          <linearGradient id={`grad-${title}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: sparklineColor, stopOpacity: 0.1 }} />
+            <stop offset="100%" style={{ stopColor: sparklineColor, stopOpacity: 0 }} />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  </div>
+);
 
-function Badge({ status }) {
-  const s = statusMap[status] || statusMap.info;
-  return (
-    <span style={{
-      fontSize: 11, fontWeight: 700, padding: '2px 9px',
-      borderRadius: 20, background: s.bg, color: s.color,
-      textTransform: 'uppercase', letterSpacing: '0.05em',
-    }}>
-      {s.label}
-    </span>
-  );
-}
+const LoanApplicationItem = ({ name, tier, id, amount, status, isManual }) => (
+  <div className="bg-white p-4 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors flex items-center justify-between group">
+    <div className="flex items-center gap-4">
+      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-brand-blue border border-blue-100">
+        <User size={20} />
+      </div>
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-slate-700">{name}</span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
+            status === 'Eligible' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+          }`}>
+            {status}
+          </span>
+          {isManual && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 uppercase tracking-wide">
+              Manual Review
+            </span>
+          )}
+        </div>
+        <div className="text-[11px] font-medium text-slate-400 mt-0.5">
+          {id} • <span className="text-slate-500">Tier: {tier}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div className="flex items-center gap-8">
+      <div className="text-right">
+        <div className="text-sm font-bold text-slate-700">₹{amount}</div>
+        <div className="text-[10px] font-medium text-slate-400">Principal Only</div>
+      </div>
+      
+      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-emerald-100 text-emerald-600 font-bold text-[11px] hover:bg-emerald-50 transition-colors cursor-pointer capitalize">
+          <CheckCircle2 size={12} />
+          Approve
+        </button>
+        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-rose-100 text-rose-600 font-bold text-[11px] hover:bg-rose-50 transition-colors cursor-pointer capitalize">
+          <XCircle size={12} />
+          Reject
+        </button>
+      </div>
+      {/* Visual spacer for when buttons are hidden */}
+      <div className="w-0 group-hover:hidden transition-all overflow-hidden whitespace-nowrap text-slate-300">
+         <XCircle size={12} className="opacity-0" />
+      </div>
+    </div>
+  </div>
+);
+
+const ActivityItem = ({ user, action, target, time, icon: Icon, color }) => (
+  <div className="flex gap-4 relative">
+    <div className="z-10 bg-white p-1.5 rounded-full border border-slate-100 shadow-sm flex-shrink-0">
+      <Icon size={14} className={color} />
+    </div>
+    <div className="flex flex-col gap-1 pb-6">
+       <p className="text-[13px] leading-tight text-slate-600 font-medium">
+         <span className="font-bold text-slate-800 underline decoration-slate-200 cursor-pointer">{user}</span> {action} <span className="font-bold text-slate-800">{target}</span>
+       </p>
+       <span className="text-[11px] text-slate-400 flex items-center gap-1">
+         <Clock size={10} /> {time}
+       </span>
+    </div>
+    {/* Connection Line */}
+    <div className="absolute left-[11px] top-8 bottom-0 w-[1px] bg-slate-100 -z-0"></div>
+  </div>
+);
 
 export default function EmployeeDashboard() {
-  const navigate           = useNavigate();
-  const { user, clearAuth } = useAuthStore();
-
-  const handleSignOut = async () => {
-    await signOut(auth);
-    clearAuth();
-    navigate('/login', { replace: true });
-  };
-
-  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Employee';
+  const { user } = useAuthStore();
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f6f8fb', fontFamily: 'Inter, sans-serif' }}>
-
-      {/* ── Top Nav ── */}
-      <header style={{
-        background: '#1a2f55', color: '#fff',
-        padding: '0 32px', height: 60,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        boxShadow: '0 2px 12px rgba(26,47,85,0.18)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <ShieldCheck size={22} fill="white" stroke="#1a2f55" />
-          <span style={{ fontWeight: 700, fontSize: 17, letterSpacing: '-0.3px' }}>
-            TransactFlowOS
-          </span>
-          <span style={{
-            marginLeft: 8, fontSize: 11, fontWeight: 700,
-            background: '#d1fae5', color: '#065f46',
-            padding: '2px 9px', borderRadius: 20,
-            letterSpacing: '0.06em', textTransform: 'uppercase',
-          }}>
-            Employee
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <button style={{ background: 'none', border: 'none', color: '#93c5fd', cursor: 'pointer', display: 'flex' }}>
-            <Bell size={20} />
-          </button>
-          <div style={{ fontSize: 13, color: '#bfdbfe', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user?.email ?? 'Employee'}
-          </div>
-          <button
-            onClick={handleSignOut}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
-              color: '#fff', borderRadius: 8, padding: '6px 14px',
-              fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.18)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-          >
-            <LogOut size={15} />
-            Sign Out
-          </button>
-        </div>
-      </header>
-
-      {/* ── Body ── */}
-      <main style={{ padding: '32px', maxWidth: 1100, margin: '0 auto' }}>
-
-        {/* Welcome */}
-        <div style={{
-          background: 'linear-gradient(130deg, #1a2f55 0%, #1d4ed8 100%)',
-          borderRadius: 16, padding: '28px 30px',
-          marginBottom: 28, display: 'flex', alignItems: 'center', gap: 18,
-          boxShadow: '0 6px 24px rgba(26,47,85,0.18)',
-        }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.15)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <UserCircle2 size={30} color="#fff" />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: '#fff', margin: 0 }}>
-              Welcome back, {displayName}!
-            </h1>
-            <p style={{ fontSize: 13, color: '#bfdbfe', marginTop: 4 }}>
-              Your workspace is active. Here's a summary of your account.
-            </p>
-          </div>
-        </div>
-
-        {/* Stat Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 18, marginBottom: 30 }}>
-          {stats.map((s) => (
-            <div key={s.label} style={{
-              background: '#fff', borderRadius: 14, padding: '22px 24px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-              display: 'flex', flexDirection: 'column', gap: 14,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>{s.label}</span>
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <s.icon size={18} color={s.color} />
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>{s.value}</div>
-                <div style={{
-                  fontSize: 12, marginTop: 4, fontWeight: 600,
-                  color: s.positive === true ? '#059669' : s.positive === false ? '#b45309' : '#64748b',
-                }}>
-                  {s.delta}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Recent Activity */}
-        <div style={{
-          background: '#fff', borderRadius: 14, padding: '24px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: '#1a2f55', margin: 0 }}>
-              Recent Activity
-            </h2>
-            <button style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              background: 'none', border: 'none', color: '#3b82f6',
-              cursor: 'pointer', fontSize: 13, fontWeight: 600,
-            }}>
-              View all <ChevronRight size={14} />
+    <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        {/* Top Header */}
+        <header className="h-16 px-8 flex items-center justify-between sticky top-0 bg-[#f6f8fb]/80 backdrop-blur-md z-20 border-b border-slate-100/50">
+          <h1 className="text-xl font-bold text-slate-800 tracking-tight">Operations Center</h1>
+          
+          <div className="flex items-center gap-4">
+            <button className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-brand-blue hover:bg-white transition-all cursor-pointer relative group">
+              <Bell size={20} />
+              <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#f6f8fb] group-hover:border-white animate-pulse"></span>
             </button>
           </div>
+        </header>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {recentActivity.map((item, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '13px 0',
-                borderBottom: i < recentActivity.length - 1 ? '1px solid #f8fafc' : 'none',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 8, height: 8, borderRadius: '50%',
-                    background: item.status === 'success' ? '#10b981' : item.status === 'pending' ? '#f59e0b' : '#3b82f6',
-                    flexShrink: 0,
-                  }} />
-                  <span style={{ fontSize: 13, color: '#334155' }}>{item.action}</span>
+        {/* Main Content */}
+        <main className="p-8 pb-16 space-y-8 max-w-7xl mx-auto w-full">
+          
+          {/* Stats Bar */}
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard 
+              title="Pending KYC" 
+              value="24" 
+              trend="12%" 
+              isUp={true} 
+              sparklineColor="#10b981" 
+              sparklinePath="M0 40 Q 20 20 40 35 T 80 15 T 120 25 T 160 10 T 200 30"
+            />
+            <StatCard 
+              title="Loans to Review" 
+              value="18" 
+              trend="5%" 
+              isUp={false} 
+              sparklineColor="#3b82f6" 
+              sparklinePath="M0 10 Q 30 25 60 15 T 120 40 T 180 30 T 400 35"
+            />
+            <StatCard 
+              title="Active Defaults" 
+              value="3" 
+              trend="0%" 
+              isUp={true} 
+              sparklineColor="#ef4444" 
+              sparklinePath="M0 35 L 50 35 L 100 32 L 150 40 L 200 35"
+            />
+            <StatCard 
+              title="Resolved (MTD)" 
+              value="142" 
+              trend="28%" 
+              isUp={true} 
+              sparklineColor="#6366f1" 
+              sparklinePath="M0 45 L 40 40 L 80 30 L 120 35 L 160 15 L 200 10"
+            />
+          </section>
+
+          <section className="grid grid-cols-12 gap-8 items-start">
+            
+            {/* Left Column: Loan Applications */}
+            <div className="col-span-12 lg:col-span-8 space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-lg font-bold text-slate-800">Loan Applications Inbox</h2>
+                  <span className="bg-blue-100 text-blue-600 font-bold text-xs px-2 py-0.5 rounded-md">6</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Clock size={12} /> {item.time}
-                  </span>
-                  <Badge status={item.status} />
-                </div>
+                <button className="text-sm font-bold text-blue-500 hover:text-blue-700 flex items-center gap-1 transition-colors cursor-pointer group">
+                  View All Queues <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
-      </main>
+
+              <div className="space-y-3">
+                <LoanApplicationItem name="Arjun Sharma" tier="Gold" id="LN-8802" amount="50,000" status="Eligible" />
+                <LoanApplicationItem name="Priya Venkatesh" tier="Platinum" id="LN-8805" amount="1,20,000" status="Eligible" />
+                <LoanApplicationItem name="Rohan Dasgupta" tier="Silver" id="LN-8812" amount="25,000" status="Review" isManual={true} />
+                <LoanApplicationItem name="Meera Nair" tier="Gold" id="LN-8819" amount="75,000" status="Eligible" />
+                <LoanApplicationItem name="Suresh Prabhu" tier="Premium" id="LN-8824" amount="2,00,000" status="Review" isManual={true} />
+                <LoanApplicationItem name="Anjali Gupta" tier="Silver" id="LN-8830" amount="40,000" status="Eligible" />
+              </div>
+
+              <button className="w-full py-3 bg-white border border-slate-100 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer border-dashed border-2">
+                Load More Applications
+              </button>
+            </div>
+
+            {/* Right Column: Feed and Tools */}
+            <div className="col-span-12 lg:col-span-4 space-y-8">
+              
+              {/* Activity Feed */}
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-50 overflow-hidden flex flex-col h-[520px]">
+                <div className="p-5 border-b border-slate-50 flex items-center gap-2">
+                  <Clock size={16} className="text-slate-400" />
+                  <h3 className="text-sm font-bold text-slate-800">Live Activity Feed</h3>
+                </div>
+                <div className="flex-1 p-6 overflow-y-auto no-scrollbar scroll-smooth">
+                  <ActivityItem 
+                    user="Sarah Smith" 
+                    action="approved KYC for" 
+                    target="Vikram Malhotra" 
+                    time="12m ago" 
+                    icon={UserCheck} 
+                    color="text-emerald-500" 
+                  />
+                  <ActivityItem 
+                    user="David Chen" 
+                    action="flagged loan LN-8792 for" 
+                    target="manual audit" 
+                    time="45m ago" 
+                    icon={AlertCircle} 
+                    color="text-amber-500" 
+                  />
+                  <ActivityItem 
+                    user="System OS" 
+                    action="auto-resolved 12" 
+                    target="pending cycles" 
+                    time="1h ago" 
+                    icon={CheckCircle2} 
+                    color="text-blue-500" 
+                  />
+                  <ActivityItem 
+                    user="Sarah Smith" 
+                    action="rejected default appeal for" 
+                    target="Member #021" 
+                    time="2h ago" 
+                    icon={XCircle} 
+                    color="text-rose-500" 
+                  />
+                  <ActivityItem 
+                    user="Anita Ray" 
+                    action="updated Recovery Stage to 'Legal' for" 
+                    target="LN-764" 
+                    time="4h ago" 
+                    icon={FileText} 
+                    color="text-slate-600" 
+                  />
+                  <ActivityItem 
+                    user="System OS" 
+                    action="performed" 
+                    target="Kernel routine maintenance" 
+                    time="6h ago" 
+                    icon={AlertCircle} 
+                    color="text-slate-400" 
+                  />
+                </div>
+                <button className="p-4 text-xs font-bold text-slate-500 bg-slate-50 border-t border-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
+                   See Full Audit Log
+                </button>
+              </div>
+
+              {/* Quick Tools */}
+              <div className="space-y-4">
+                 <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Quick Tools</h3>
+                 
+                 <button className="w-full bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between group cursor-pointer hover:border-blue-200 hover:shadow-sm transition-all">
+                    <span className="text-sm font-bold text-slate-700">Batch Approve KYC</span>
+                    <span className="bg-brand-blue text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full">8</span>
+                 </button>
+
+                 <button className="w-full bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between group cursor-pointer hover:border-blue-200 hover:shadow-sm transition-all">
+                    <span className="text-sm font-bold text-slate-700">Generate Cycle Report</span>
+                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-brand-blue group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                 </button>
+              </div>
+
+            </div>
+
+          </section>
+
+        </main>
+      </div>
     </div>
   );
 }
