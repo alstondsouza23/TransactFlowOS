@@ -89,10 +89,10 @@ export default function Sidebar({ activePage }) {
           
           <button 
             onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-slate-500 hover:text-red-600 transition-colors w-full cursor-pointer group"
+            className="flex items-center gap-2 px-3 py-2 text-sm font-black text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-all w-full cursor-pointer group mt-2"
           >
             <LogOut size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-            Logout
+            Sign Out
           </button>
         </div>
       </div>

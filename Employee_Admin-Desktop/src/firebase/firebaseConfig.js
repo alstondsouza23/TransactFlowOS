@@ -18,6 +18,14 @@ const firebaseConfig = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+  console.warn(
+    "🔥 Firebase API Key is missing! \n" +
+    "If you're seeing a blank screen on Vercel, please add your environment variables " +
+    "in the Vercel Dashboard -> Settings -> Environment Variables."
+  );
+}
+
 const app = initializeApp(firebaseConfig);
 
 /** Firebase Auth instance — import this wherever you need auth methods. */
