@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import AdminDashboard from './pages/admin/Dashboard';
 import EmployeeDashboard from './pages/employee/Dashboard';
 import KYCApprovals from './pages/employee/KYCApprovals';
+import DefaultTracker from './pages/employee/DefaultTracker';
 
 function App() {
   return (
@@ -41,6 +42,15 @@ function App() {
             element={
               <ProtectedRoute allowedRole="employee">
                 <KYCApprovals />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/employee/recovery"
+            element={
+              <ProtectedRoute allowedRole="employee">
+                <DefaultTracker />
               </ProtectedRoute>
             }
           />
