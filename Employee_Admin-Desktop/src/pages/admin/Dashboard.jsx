@@ -158,11 +158,12 @@ export default function AdminDashboard() {
   const { user } = useAuthStore();
 
   return (
-    <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter flex-col">
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar activePage="System Overview" />
-        
-        <div className="flex-1 flex flex-col overflow-y-auto relative">
+    <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter">
+      <Sidebar activePage="System Overview" />
+      
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto no-scrollbar">
           {/* Header */}
           <header className="h-16 px-8 flex items-center justify-between sticky top-0 bg-[#f6f8fb]/80 backdrop-blur-md z-20 border-b border-slate-100/50 w-full">
             <h1 className="text-xl font-bold text-[#1a2f55] tracking-tight">Administrator Command Center</h1>
@@ -182,7 +183,7 @@ export default function AdminDashboard() {
             </div>
           </header>
 
-          <main className="p-8 space-y-8 max-w-[1400px] mx-auto w-full pb-20">
+          <main className="p-8 space-y-8 max-w-[1400px] mx-auto w-full pb-12">
             
             {/* Stats Overview Bar */}
             <section className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -355,23 +356,23 @@ export default function AdminDashboard() {
 
           </main>
         </div>
-      </div>
 
-      {/* System Status Footer Bar */}
-      <footer className="h-10 bg-[#1a1a1a] border-t border-slate-800 flex items-center justify-between px-6 shrink-0 z-30">
-        <div className="flex items-center gap-8">
-           <SystemMetric icon={Cpu} label="RAM" value="1.2GB / 16GB" />
-           <div className="w-[1px] h-3 bg-slate-800"></div>
-           <SystemMetric icon={Database} label="WAL Entries" value="42,901" />
-           <div className="w-[1px] h-3 bg-slate-800"></div>
-           <SystemMetric icon={Lock} label="Auction Lock" value="ACTIVE (0x7F2A)" />
-        </div>
-        <div className="flex items-center gap-4">
-           <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest font-mono">
-             CHITOS_KERNEL_v1.0.4 // THREADS: 128 [STABLE]
-           </span>
-        </div>
-      </footer>
+        {/* System Status Footer Bar - Now part of the main column */}
+        <footer className="h-10 bg-[#1a1a1a] border-t border-slate-800 flex items-center justify-between px-6 shrink-0 z-30">
+          <div className="flex items-center gap-8">
+             <SystemMetric icon={Cpu} label="RAM" value="1.2GB / 16GB" />
+             <div className="w-[1px] h-3 bg-slate-800"></div>
+             <SystemMetric icon={Database} label="WAL Entries" value="42,901" />
+             <div className="w-[1px] h-3 bg-slate-800"></div>
+             <SystemMetric icon={Lock} label="Auction Lock" value="ACTIVE (0x7F2A)" />
+          </div>
+          <div className="flex items-center gap-4">
+             <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest font-mono">
+               CHITOS_KERNEL_v1.0.4 // THREADS: 128 [STABLE]
+             </span>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

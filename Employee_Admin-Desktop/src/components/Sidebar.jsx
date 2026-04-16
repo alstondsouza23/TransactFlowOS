@@ -40,7 +40,7 @@ export default function Sidebar({ activePage }) {
   const displayName = user?.displayName || user?.email?.split('@')[0] || (isAdmin ? 'Admin' : 'Employee');
 
   return (
-    <aside className="w-64 min-h-screen bg-white border-r border-slate-100 flex flex-col sticky top-0">
+    <aside className="w-64 h-screen bg-white border-r border-slate-100 flex flex-col sticky top-0 shrink-0">
       {/* Brand Logo */}
       <div className="p-6 flex items-center gap-3">
         <div className="bg-brand-blue p-1.5 rounded-lg text-white shadow-sm shadow-brand-blue/20">
@@ -49,8 +49,8 @@ export default function Sidebar({ activePage }) {
         <span className="font-bold text-xl text-brand-blue tracking-tight">TransactFlowOS</span>
       </div>
 
-      {/* Menu Section */}
-      <div className="flex-1 px-4 mt-4">
+      {/* Menu Section - Scrollable */}
+      <div className="flex-1 px-4 mt-4 overflow-y-auto no-scrollbar min-h-0">
         <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-4">
           {isAdmin ? 'Admin Menu' : 'Employee Menu'}
         </h3>
@@ -73,7 +73,7 @@ export default function Sidebar({ activePage }) {
       </div>
 
       {/* User Profile & Logout Section */}
-      <div className="p-4 border-t border-slate-50">
+      <div className="p-4 border-t border-slate-50 shrink-0 bg-white">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3 px-2">
             <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border-2 border-white shadow-sm ring-1 ring-slate-100 overflow-hidden">

@@ -82,11 +82,12 @@ export default function KYCApprovals() {
   ];
 
   return (
-    <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter flex-col">
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar activePage="KYC Approvals" />
-        
-        <div className="flex-1 flex flex-col overflow-y-auto relative">
+    <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter">
+      <Sidebar activePage="KYC Approvals" />
+      
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto no-scrollbar">
           {/* Header */}
           <header className="h-16 px-8 flex items-center justify-between sticky top-0 bg-[#f6f8fb]/80 backdrop-blur-md z-20 border-b border-slate-100/50 w-full">
             <h1 className="text-xl font-bold text-[#1a2f55] tracking-tight">KYC Management</h1>
@@ -96,7 +97,7 @@ export default function KYCApprovals() {
                 <input 
                   type="text" 
                   placeholder="Quick search..." 
-                  className="bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm outline-none focus:border-brand-blue/30 focus:ring-4 focus:ring-brand-blue/5 transition-all w-64 shadow-sm"
+                  className="bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm outline-none w-64 shadow-sm focus:border-brand-blue/30 focus:ring-4 focus:ring-brand-blue/5 transition-all"
                 />
               </div>
               <button className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-brand-blue hover:bg-white transition-all cursor-pointer relative group border border-transparent hover:border-slate-100 shadow-sm">
@@ -244,23 +245,23 @@ export default function KYCApprovals() {
             </div>
           </main>
         </div>
-      </div>
 
-      {/* System Status Footer Bar */}
-      <footer className="h-10 bg-[#1a1a1a] border-t border-slate-800 flex items-center justify-between px-6 shrink-0 z-30">
-        <div className="flex items-center gap-8">
-           <SystemMetric icon={Cpu} label="RAM" value="1.2GB / 16GB" />
-           <div className="w-[1px] h-3 bg-slate-800"></div>
-           <SystemMetric icon={Database} label="WAL Entries" value="42,901" />
-           <div className="w-[1px] h-3 bg-slate-800"></div>
-           <SystemMetric icon={Lock} label="Auction Lock" value="ACTIVE (0x7F2A)" />
-        </div>
-        <div className="flex items-center gap-4">
-           <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest font-mono">
-             CHITOS_KERNEL_v1.0.4 // THREADS: 128 [STABLE]
-           </span>
-        </div>
-      </footer>
+        {/* System Status Footer Bar - Restricted to Content Column */}
+        <footer className="h-10 bg-[#1a1a1a] border-t border-slate-800 flex items-center justify-between px-6 shrink-0 z-30">
+          <div className="flex items-center gap-8">
+             <SystemMetric icon={Cpu} label="RAM" value="1.2GB / 16GB" />
+             <div className="w-[1px] h-3 bg-slate-800"></div>
+             <SystemMetric icon={Database} label="WAL Entries" value="42,901" />
+             <div className="w-[1px] h-3 bg-slate-800"></div>
+             <SystemMetric icon={Lock} label="Auction Lock" value="ACTIVE (0x7F2A)" />
+          </div>
+          <div className="flex items-center gap-4">
+             <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest font-mono">
+               CHITOS_KERNEL_v1.0.4 // THREADS: 128 [STABLE]
+             </span>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }
