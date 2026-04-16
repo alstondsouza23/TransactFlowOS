@@ -34,7 +34,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading]       = useState(false);
   const [error, setError]               = useState(null);       // general / firebase error
-  const [roleError, setRoleError]       = useState(false);      // role mismatch flag
+  const [roleError, setRoleError]       = useState(false);      // role mismatch flag (Admin vs Employee)
+  const [clientError, setClientError]   = useState(false);      // unauthorized user flag (Client)
 
   const navigate   = useNavigate();
   const { setAuth } = useAuthStore();
@@ -43,6 +44,7 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     setRoleError(false);
+    setClientError(false);
     setIsLoading(true);
 
     try {
@@ -53,7 +55,15 @@ export default function Login() {
       // 2. Resolve the actual role from Firebase data (email + UID check)
       const actualRole = resolveRole(firebaseUser.email, firebaseUser.uid);
 
-      // 3. Compare with the UI-selected role
+      // 3. Block clients from accessing the desktop environment
+      if (actualRole === 'client') {
+        await signOut(auth);
+        setClientError(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // 4. Compare with the UI-selected role (Admin vs Employee mismatch)
       if (selectedRole !== actualRole) {
         // Role mismatch — sign the user out immediately and block access
         await signOut(auth);
@@ -62,7 +72,7 @@ export default function Login() {
         return;
       }
 
-      // 4. Roles match — persist in global store and redirect
+      // 5. Roles match — persist in global store and redirect
       setAuth(firebaseUser, actualRole);
       navigate(actualRole === 'admin' ? '/admin/dashboard' : '/employee/dashboard', { replace: true });
 
@@ -105,12 +115,26 @@ export default function Login() {
                     ? 'bg-white text-brand-blue shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
-                onClick={() => { setSelectedRole(r); setError(null); setRoleError(false); }}
+                onClick={() => { setSelectedRole(r); setError(null); setRoleError(false); setClientError(false); }}
               >
                 {r}
               </button>
             ))}
           </div>
+
+          {/* Client Block Error Banner */}
+          {clientError && (
+            <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <Shield size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[13px] font-semibold text-amber-800">Access Restricted</p>
+                <p className="text-[12px] text-amber-700 mt-0.5 leading-snug">
+                  This workspace is for employee and administrator accounts only. 
+                  For client access, please use the <strong>mobile application</strong>.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Role Mismatch Error Banner */}
           {roleError && (
