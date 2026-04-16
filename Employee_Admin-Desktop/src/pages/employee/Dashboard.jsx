@@ -58,55 +58,95 @@ const StatCard = ({ title, value, trend, isUp, sparklineColor, sparklinePath }) 
   </div>
 );
 
-const LoanApplicationItem = ({ name, tier, id, amount, status, isManual }) => (
-  <div className="bg-white p-4 rounded-xl border border-slate-100 hover:border-blue-200 transition-colors flex items-center justify-between group">
-    <div className="flex items-center gap-4">
-      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-brand-blue border border-blue-100">
-        <User size={20} />
-      </div>
-      <div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-slate-700">{name}</span>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
-            status === 'Eligible' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-          }`}>
-            {status}
-          </span>
-          {isManual && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 uppercase tracking-wide">
-              Manual Review
-            </span>
-          )}
+const LoanApplicationItem = ({ name, tier, id, amount, status, isManual }) => {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+
+  return (
+    <div 
+      className={`bg-white rounded-xl border transition-all duration-300 overflow-hidden ${
+        isExpanded ? 'border-blue-300 shadow-md ring-1 ring-blue-100' : 'border-slate-100 hover:border-blue-200'
+      }`}
+    >
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="p-4 flex items-center justify-between group cursor-pointer"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-brand-blue border border-blue-100 group-hover:bg-blue-100 transition-colors">
+            <User size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-700 underline decoration-transparent group-hover:decoration-slate-300 transition-all">{name}</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
+                status === 'Eligible' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+              }`}>
+                {status}
+              </span>
+              {isManual && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 uppercase tracking-wide">
+                  Manual Review
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] font-medium text-slate-400 mt-0.5">
+              {id} • <span className="text-slate-500">Tier: {tier}</span>
+            </div>
+          </div>
         </div>
-        <div className="text-[11px] font-medium text-slate-400 mt-0.5">
-          {id} • <span className="text-slate-500">Tier: {tier}</span>
+        
+        <div className="flex items-center gap-8">
+          <div className="text-right">
+            <div className="text-sm font-bold text-slate-700">₹{amount}</div>
+            <div className="text-[10px] font-medium text-slate-400">Principal Only</div>
+          </div>
+          
+          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-emerald-100 text-emerald-600 font-bold text-[11px] hover:bg-emerald-50 transition-colors cursor-pointer capitalize">
+              <CheckCircle2 size={12} />
+              Approve
+            </button>
+            <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-rose-100 text-rose-600 font-bold text-[11px] hover:bg-rose-50 transition-colors cursor-pointer capitalize">
+              <XCircle size={12} />
+              Reject
+            </button>
+          </div>
+          <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+             <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded Content */}
+      <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-60 opacity-100 border-t border-slate-50' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+        <div className="p-4 bg-slate-50/30 grid grid-cols-3 gap-6">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Credit Score</span>
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 w-[78%]"></div>
+              </div>
+              <span className="text-xs font-bold text-slate-700">782</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Employment</span>
+            <p className="text-xs font-bold text-slate-700">Senior Engineer • TCS</p>
+          </div>
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Applied On</span>
+            <p className="text-xs font-bold text-slate-700">14 Apr 2026, 10:24 AM</p>
+          </div>
+          <div className="col-span-3">
+             <button className="text-[10px] font-bold text-brand-blue hover:underline flex items-center gap-1">
+                View full KYC profile and bank statements <ArrowRight size={12} />
+             </button>
+          </div>
         </div>
       </div>
     </div>
-    
-    <div className="flex items-center gap-8">
-      <div className="text-right">
-        <div className="text-sm font-bold text-slate-700">₹{amount}</div>
-        <div className="text-[10px] font-medium text-slate-400">Principal Only</div>
-      </div>
-      
-      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-emerald-100 text-emerald-600 font-bold text-[11px] hover:bg-emerald-50 transition-colors cursor-pointer capitalize">
-          <CheckCircle2 size={12} />
-          Approve
-        </button>
-        <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-rose-100 text-rose-600 font-bold text-[11px] hover:bg-rose-50 transition-colors cursor-pointer capitalize">
-          <XCircle size={12} />
-          Reject
-        </button>
-      </div>
-      {/* Visual spacer for when buttons are hidden */}
-      <div className="w-0 group-hover:hidden transition-all overflow-hidden whitespace-nowrap text-slate-300">
-         <XCircle size={12} className="opacity-0" />
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 const ActivityItem = ({ user, action, target, time, icon: Icon, color }) => (
   <div className="flex gap-4 relative">
