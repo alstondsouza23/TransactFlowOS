@@ -1,168 +1,117 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Bell, 
   Search, 
   TrendingUp, 
   TrendingDown, 
-  ArrowUpRight, 
-  ArrowDownRight,
   ChevronRight,
   Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  FileText,
-  CreditCard,
+  ExternalLink,
+  ShieldCheck,
   User,
-  UserCheck,
-  ArrowRight
+  ArrowRight,
+  Plus,
+  Filter,
+  ArrowUpRight
 } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
+import KernelMonitor from '../../components/KernelMonitor';
 import useAuthStore from '../../store/authStore';
 
-// --- Sub-components (internal to keep this demo clean but robust) ---
+// --- Sub-components ---
 
-const StatCard = ({ title, value, trend, isUp, sparklineColor, sparklinePath }) => (
-  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-50 flex flex-col gap-4 relative overflow-hidden group hover:shadow-md transition-shadow">
-    <div className="flex justify-between items-start">
-      <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{title}</h4>
-      <div className={`flex items-center gap-1 text-[11px] font-bold ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
-        {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-        {trend}
-      </div>
-    </div>
-    
-    <div className="flex items-end justify-between">
-      <span className="text-3xl font-extrabold text-slate-800 tracking-tight">{value}</span>
-    </div>
-
-    {/* Simple Sparkline SVG mimic */}
-    <div className="h-12 w-full mt-2">
-      <svg className="w-full h-full" preserveAspectRatio="none">
-        <path 
-          d={sparklinePath} 
-          fill="none" 
-          stroke={sparklineColor} 
-          strokeWidth="2" 
-          strokeLinecap="round"
-          className="opacity-80 group-hover:opacity-100 transition-opacity"
-        />
-        <defs>
-          <linearGradient id={`grad-${title}`} x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" style={{ stopColor: sparklineColor, stopOpacity: 0.1 }} />
-            <stop offset="100%" style={{ stopColor: sparklineColor, stopOpacity: 0 }} />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
-  </div>
-);
-
-const LoanApplicationItem = ({ name, tier, id, amount, status, isManual }) => {
-  const [isExpanded, setIsExpanded] = React.useState(false);
+const LoanApplicationCard = ({ name, amount, date, status, score }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const statusStyles = {
+    Pending: "bg-slate-100 text-slate-500",
+    Verified: "bg-emerald-50 text-emerald-600",
+    Reviewing: "bg-brand-blue/10 text-brand-blue",
+  };
 
   return (
     <div 
-      className={`bg-white rounded-xl border transition-all duration-300 overflow-hidden ${
-        isExpanded ? 'border-blue-300 shadow-md ring-1 ring-blue-100' : 'border-slate-100 hover:border-blue-200'
-      }`}
+      onClick={() => setIsExpanded(!isExpanded)}
+      className={`bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group relative overflow-hidden ${isExpanded ? 'ring-2 ring-brand-blue/20 bg-blue-50/10' : ''}`}
     >
-      <div 
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="p-4 flex items-center justify-between group cursor-pointer"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-brand-blue border border-blue-100 group-hover:bg-blue-100 transition-colors">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-brand-blue transition-colors">
             <User size={20} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-slate-700 underline decoration-transparent group-hover:decoration-slate-300 transition-all">{name}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
-                status === 'Eligible' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-              }`}>
-                {status}
-              </span>
-              {isManual && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 uppercase tracking-wide">
-                  Manual Review
-                </span>
-              )}
-            </div>
-            <div className="text-[11px] font-medium text-slate-400 mt-0.5">
-              {id} • <span className="text-slate-500">Tier: {tier}</span>
-            </div>
+            <h4 className="font-bold text-slate-700 text-sm">{name}</h4>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{date}</span>
           </div>
         </div>
-        
-        <div className="flex items-center gap-8">
-          <div className="text-right">
-            <div className="text-sm font-bold text-slate-700">₹{amount}</div>
-            <div className="text-[10px] font-medium text-slate-400">Principal Only</div>
-          </div>
-          
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-emerald-100 text-emerald-600 font-bold text-[11px] hover:bg-emerald-50 transition-colors cursor-pointer capitalize">
-              <CheckCircle2 size={12} />
-              Approve
-            </button>
-            <button className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg border border-rose-100 text-rose-600 font-bold text-[11px] hover:bg-rose-50 transition-colors cursor-pointer capitalize">
-              <XCircle size={12} />
-              Reject
-            </button>
-          </div>
-          <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-             <ChevronRight size={16} className="text-slate-300 group-hover:text-slate-400" />
-          </div>
+        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${statusStyles[status]}`}>
+          {status}
+        </span>
+      </div>
+
+      <div className="flex items-end justify-between">
+        <div>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Requested Amount</span>
+          <span className="text-lg font-black text-[#1a2f55]">₹ {amount}</span>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Risk Score</span>
+          <span className={`text-sm font-black ${score > 800 ? 'text-emerald-500' : 'text-blue-500'}`}>{score}</span>
         </div>
       </div>
 
-      {/* Expanded Content */}
-      <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-60 opacity-100 border-t border-slate-50' : 'max-h-0 opacity-0 pointer-events-none'}`}>
-        <div className="p-4 bg-slate-50/30 grid grid-cols-3 gap-6">
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Credit Score</span>
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 w-[78%]"></div>
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div className="mt-6 pt-5 border-t border-slate-100 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+           <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-1">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Employment</span>
+                <p className="text-xs font-bold text-slate-600">Senior Developer @ Tech Solution</p>
+             </div>
+             <div className="space-y-1 text-right">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Monthly Income</span>
+                <p className="text-xs font-bold text-slate-600">₹ 85,000</p>
+             </div>
+           </div>
+           
+           <div className="bg-slate-50 p-3 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                 <span className="text-[10px] font-bold text-slate-500">KYC Status</span>
+                 <span className="text-[10px] font-black text-emerald-600 bg-emerald-100/50 px-1.5 py-0.5 rounded">PASSED</span>
               </div>
-              <span className="text-xs font-bold text-slate-700">782</span>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Employment</span>
-            <p className="text-xs font-bold text-slate-700">Senior Engineer • TCS</p>
-          </div>
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Applied On</span>
-            <p className="text-xs font-bold text-slate-700">14 Apr 2026, 10:24 AM</p>
-          </div>
-          <div className="col-span-3">
-             <button className="text-[10px] font-bold text-brand-blue hover:underline flex items-center gap-1">
-                View full KYC profile and bank statements <ArrowRight size={12} />
-             </button>
-          </div>
+              <div className="flex items-center justify-between">
+                 <span className="text-[10px] font-bold text-slate-500">Bureau Score</span>
+                 <span className="text-[10px] font-black text-slate-700">742 / 900</span>
+              </div>
+           </div>
+
+           <div className="flex items-center gap-2 pt-2">
+              <button className="flex-1 py-2 bg-[#1a2f55] text-white text-[11px] font-black rounded-lg hover:bg-[#142445] transition-all">
+                 Fast-Track Approve
+              </button>
+              <button className="px-3 py-2 border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition-all">
+                 <ExternalLink size={14} />
+              </button>
+           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-const ActivityItem = ({ user, action, target, time, icon: Icon, color }) => (
-  <div className="flex gap-4 relative">
-    <div className="z-10 bg-white p-1.5 rounded-full border border-slate-100 shadow-sm flex-shrink-0">
-      <Icon size={14} className={color} />
+const StatCard = ({ title, value, trend, isUp, icon: Icon }) => (
+  <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex-1 min-w-[240px] group hover:border-brand-blue/30 transition-all">
+    <div className="flex justify-between items-start mb-6">
+      <div className="p-3 bg-slate-50 rounded-2xl group-hover:bg-blue-50 transition-colors">
+        <Icon size={20} className="text-slate-500 group-hover:text-brand-blue" />
+      </div>
+      <div className={`flex items-center gap-1 text-[11px] font-bold ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+        {isUp ? <ArrowUpRight size={14} /> : <TrendingDown size={14} />}
+        {trend}
+      </div>
     </div>
-    <div className="flex flex-col gap-1 pb-6">
-       <p className="text-[13px] leading-tight text-slate-600 font-medium">
-         <span className="font-bold text-slate-800 underline decoration-slate-200 cursor-pointer">{user}</span> {action} <span className="font-bold text-slate-800">{target}</span>
-       </p>
-       <span className="text-[11px] text-slate-400 flex items-center gap-1">
-         <Clock size={10} /> {time}
-       </span>
-    </div>
-    {/* Connection Line */}
-    <div className="absolute left-[11px] top-8 bottom-0 w-[1px] bg-slate-100 -z-0"></div>
+    <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">{title}</span>
+    <span className="text-3xl font-black text-[#1a2f55]">{value}</span>
   </div>
 );
 
@@ -173,171 +122,105 @@ export default function EmployeeDashboard() {
     <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter">
       <Sidebar activePage="Ops Dashboard" />
       
-      <div className="flex-1 flex flex-col overflow-y-auto">
-        {/* Top Header */}
-        <header className="h-16 px-8 flex items-center justify-between sticky top-0 bg-[#f6f8fb]/80 backdrop-blur-md z-20 border-b border-slate-100/50">
-          <h1 className="text-xl font-bold text-slate-800 tracking-tight">Operations Center</h1>
-          
-          <div className="flex items-center gap-4">
-            <button className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-brand-blue hover:bg-white transition-all cursor-pointer relative group">
-              <Bell size={20} />
-              <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#f6f8fb] group-hover:border-white animate-pulse"></span>
-            </button>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <main className="p-8 pb-16 space-y-8 max-w-7xl mx-auto w-full">
-          
-          {/* Stats Bar */}
-          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard 
-              title="Pending KYC" 
-              value="24" 
-              trend="12%" 
-              isUp={true} 
-              sparklineColor="#10b981" 
-              sparklinePath="M0 40 Q 20 20 40 35 T 80 15 T 120 25 T 160 10 T 200 30"
-            />
-            <StatCard 
-              title="Loans to Review" 
-              value="18" 
-              trend="5%" 
-              isUp={false} 
-              sparklineColor="#3b82f6" 
-              sparklinePath="M0 10 Q 30 25 60 15 T 120 40 T 180 30 T 400 35"
-            />
-            <StatCard 
-              title="Active Defaults" 
-              value="3" 
-              trend="0%" 
-              isUp={true} 
-              sparklineColor="#ef4444" 
-              sparklinePath="M0 35 L 50 35 L 100 32 L 150 40 L 200 35"
-            />
-            <StatCard 
-              title="Resolved (MTD)" 
-              value="142" 
-              trend="28%" 
-              isUp={true} 
-              sparklineColor="#6366f1" 
-              sparklinePath="M0 45 L 40 40 L 80 30 L 120 35 L 160 15 L 200 10"
-            />
-          </section>
-
-          <section className="grid grid-cols-12 gap-8 items-start">
-            
-            {/* Left Column: Loan Applications */}
-            <div className="col-span-12 lg:col-span-8 space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-bold text-slate-800">Loan Applications Inbox</h2>
-                  <span className="bg-blue-100 text-blue-600 font-bold text-xs px-2 py-0.5 rounded-md">6</span>
-                </div>
-                <button className="text-sm font-bold text-blue-500 hover:text-blue-700 flex items-center gap-1 transition-colors cursor-pointer group">
-                  View All Queues <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </button>
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto no-scrollbar">
+          {/* Header */}
+          <header className="h-16 px-8 flex items-center justify-between sticky top-0 bg-[#f6f8fb]/80 backdrop-blur-md z-20 border-b border-slate-100/50 w-full shrink-0">
+            <h1 className="text-xl font-bold text-[#1a2f55] tracking-tight">Ops Center Overview</h1>
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-blue" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Search applications..." 
+                  className="bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm outline-none w-64 shadow-sm focus:border-brand-blue/20 transition-all"
+                />
               </div>
-
-              <div className="space-y-3">
-                <LoanApplicationItem name="Arjun Sharma" tier="Gold" id="LN-8802" amount="50,000" status="Eligible" />
-                <LoanApplicationItem name="Priya Venkatesh" tier="Platinum" id="LN-8805" amount="1,20,000" status="Eligible" />
-                <LoanApplicationItem name="Rohan Dasgupta" tier="Silver" id="LN-8812" amount="25,000" status="Review" isManual={true} />
-                <LoanApplicationItem name="Meera Nair" tier="Gold" id="LN-8819" amount="75,000" status="Eligible" />
-                <LoanApplicationItem name="Suresh Prabhu" tier="Premium" id="LN-8824" amount="2,00,000" status="Review" isManual={true} />
-                <LoanApplicationItem name="Anjali Gupta" tier="Silver" id="LN-8830" amount="40,000" status="Eligible" />
-              </div>
-
-              <button className="w-full py-3 bg-white border border-slate-100 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer border-dashed border-2">
-                Load More Applications
+              <button className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-brand-blue hover:bg-white transition-all cursor-pointer relative group border border-slate-100/50 shadow-sm">
+                <Bell size={20} />
+                <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#f6f8fb] group-hover:border-white animate-pulse"></span>
               </button>
             </div>
+          </header>
 
-            {/* Right Column: Feed and Tools */}
-            <div className="col-span-12 lg:col-span-4 space-y-8">
-              
-              {/* Activity Feed */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-50 overflow-hidden flex flex-col h-[520px]">
-                <div className="p-5 border-b border-slate-50 flex items-center gap-2">
-                  <Clock size={16} className="text-slate-400" />
-                  <h3 className="text-sm font-bold text-slate-800">Live Activity Feed</h3>
-                </div>
-                <div className="flex-1 p-6 overflow-y-auto no-scrollbar scroll-smooth">
-                  <ActivityItem 
-                    user="Sarah Smith" 
-                    action="approved KYC for" 
-                    target="Vikram Malhotra" 
-                    time="12m ago" 
-                    icon={UserCheck} 
-                    color="text-emerald-500" 
-                  />
-                  <ActivityItem 
-                    user="David Chen" 
-                    action="flagged loan LN-8792 for" 
-                    target="manual audit" 
-                    time="45m ago" 
-                    icon={AlertCircle} 
-                    color="text-amber-500" 
-                  />
-                  <ActivityItem 
-                    user="System OS" 
-                    action="auto-resolved 12" 
-                    target="pending cycles" 
-                    time="1h ago" 
-                    icon={CheckCircle2} 
-                    color="text-blue-500" 
-                  />
-                  <ActivityItem 
-                    user="Sarah Smith" 
-                    action="rejected default appeal for" 
-                    target="Member #021" 
-                    time="2h ago" 
-                    icon={XCircle} 
-                    color="text-rose-500" 
-                  />
-                  <ActivityItem 
-                    user="Anita Ray" 
-                    action="updated Recovery Stage to 'Legal' for" 
-                    target="LN-764" 
-                    time="4h ago" 
-                    icon={FileText} 
-                    color="text-slate-600" 
-                  />
-                  <ActivityItem 
-                    user="System OS" 
-                    action="performed" 
-                    target="Kernel routine maintenance" 
-                    time="6h ago" 
-                    icon={AlertCircle} 
-                    color="text-slate-400" 
-                  />
-                </div>
-                <button className="p-4 text-xs font-bold text-slate-500 bg-slate-50 border-t border-slate-50 hover:bg-slate-100 transition-colors cursor-pointer">
-                   See Full Audit Log
-                </button>
-              </div>
-
-              {/* Quick Tools */}
-              <div className="space-y-4">
-                 <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Quick Tools</h3>
-                 
-                 <button className="w-full bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between group cursor-pointer hover:border-blue-200 hover:shadow-sm transition-all">
-                    <span className="text-sm font-bold text-slate-700">Batch Approve KYC</span>
-                    <span className="bg-brand-blue text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full">8</span>
-                 </button>
-
-                 <button className="w-full bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between group cursor-pointer hover:border-blue-200 hover:shadow-sm transition-all">
-                    <span className="text-sm font-bold text-slate-700">Generate Cycle Report</span>
-                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-brand-blue group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                 </button>
-              </div>
-
+          <main className="p-8 space-y-10 max-w-[1400px] mx-auto w-full pb-12">
+            
+            {/* Top Stat Row */}
+            <div className="flex flex-wrap gap-6">
+              <StatCard title="Active Applications" value="28" trend="+4.5%" isUp={true} icon={ShieldCheck} />
+              <StatCard title="Total Disbursed" value="₹ 18.5 L" trend="+12%" isUp={true} icon={TrendingUp} />
+              <StatCard title="Default Warning" value="4.2%" trend="-0.8%" isUp={false} icon={TrendingDown} />
             </div>
 
-          </section>
+            <div className="grid grid-cols-12 gap-8 items-start">
+               {/* Left Column: Loan Applications */}
+               <div className="col-span-12 lg:col-span-8 space-y-6">
+                  <div className="flex items-end justify-between px-1">
+                    <div>
+                        <h3 className="text-lg font-black text-[#1a2f55] tracking-tight">Loan Application Inbox</h3>
+                        <p className="text-xs font-bold text-slate-400 mt-1">Reviewing incoming debt requests for approval</p>
+                    </div>
+                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all">
+                       <Filter size={14} /> Filter
+                    </button>
+                  </div>
 
-        </main>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <LoanApplicationCard name="Rahul Sharma" amount="50,000" date="2 hours ago" status="Reviewing" score={842} />
+                     <LoanApplicationCard name="Priyanka Chopra" amount="1,50,000" date="5 hours ago" status="Verified" score={910} />
+                     <LoanApplicationCard name="Amit Kumar" amount="25,000" date="Yesterday" status="Pending" score={720} />
+                     <LoanApplicationCard name="Sneha Reddy" amount="80,000" date="Yesterday" status="Reviewing" score={785} />
+                     <LoanApplicationCard name="Vikram Singh" amount="2,00,000" date="2 days ago" status="Pending" score={650} />
+                     <LoanApplicationCard name="Ananya Desai" amount="1,20,000" date="2 days ago" status="Verified" score={880} />
+                  </div>
+               </div>
+
+               {/* Right Column: Activity Feed */}
+               <div className="col-span-12 lg:col-span-4 bg-white rounded-3xl border border-slate-100 p-8 shadow-sm space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-black text-slate-700 tracking-tight">Live Activity</h3>
+                    <span className="text-[10px] font-black bg-brand-blue/10 text-brand-blue px-2 py-1 rounded-lg uppercase tracking-widest">Real-time</span>
+                  </div>
+
+                  <div className="space-y-6">
+                     <ActivityItem time="14:22" user="System" action="Auction #GRP-22 Ended" amount="₹ 45,000 Won" />
+                     <ActivityItem time="13:58" user="Anil K." action="KYC Submission" amount="Manual Review" />
+                     <ActivityItem time="13:10" user="System" action="Default Warning" amount="Member #042" />
+                     <ActivityItem time="12:45" user="Sunita M." action="Loan Request" amount="₹ 50,000" />
+                     <ActivityItem time="12:20" user="System" action="WAL Checkpoint" amount="Integrity OK" />
+                  </div>
+
+                  <button className="w-full py-3 bg-slate-50 text-slate-400 text-xs font-black rounded-xl hover:bg-slate-100 transition-all uppercase tracking-widest">
+                     View All Logs
+                  </button>
+               </div>
+            </div>
+          </main>
+        </div>
+
+        {/* System Status Footer Bar */}
+        <KernelMonitor />
       </div>
+    </div>
+  );
+}
+
+function ActivityItem({ time, user, action, amount }) {
+  return (
+    <div className="flex gap-4 group">
+       <div className="flex flex-col items-center">
+          <div className="w-2 h-2 rounded-full bg-slate-200 mt-2 group-hover:bg-brand-blue transition-colors"></div>
+          <div className="flex-1 w-[1px] bg-slate-100 my-1"></div>
+       </div>
+       <div className="flex-1 pb-6">
+          <div className="flex justify-between items-start">
+             <span className="text-[11px] font-bold text-slate-400">{time}</span>
+             <span className="text-[11px] font-black text-slate-700">{amount}</span>
+          </div>
+          <p className="text-[13px] font-bold text-slate-600 mt-1">{action}</p>
+          <span className="text-[10px] text-slate-400 font-medium">Actor: {user}</span>
+       </div>
     </div>
   );
 }
