@@ -1,0 +1,22 @@
+# Service account key — NEVER commit this
+serviceAccountKey.json
+
+# Environment variables
+.env
+
+# Python artefacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
