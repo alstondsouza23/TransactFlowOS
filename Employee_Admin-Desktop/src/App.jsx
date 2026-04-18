@@ -4,6 +4,7 @@ import AuthProvider from './providers/AuthProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import AdminDashboard from './pages/admin/Dashboard';
+import AuditTrail from './pages/admin/AuditTrail';
 import EmployeeDashboard from './pages/employee/Dashboard';
 import KYCApprovals from './pages/employee/KYCApprovals';
 import DefaultTracker from './pages/employee/DefaultTracker';
@@ -23,6 +24,15 @@ function App() {
             element={
               <ProtectedRoute allowedRole="admin">
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/audit-trail"
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <AuditTrail />
               </ProtectedRoute>
             }
           />
