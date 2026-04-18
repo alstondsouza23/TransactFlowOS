@@ -1,0 +1,1 @@
+// Page for displaying group information and details
