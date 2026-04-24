@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AuthProvider from './providers/AuthProvider';
+import WebSocketProvider from './providers/WebSocketProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -13,6 +14,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <WebSocketProvider>
         <Routes>
           {/* Public */}
           <Route path="/" element={<Navigate to="/login" replace />} />
@@ -68,6 +70,7 @@ function App() {
           {/* Legacy / catch-all — redirect to login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        </WebSocketProvider>
       </AuthProvider>
     </Router>
   );

@@ -1,0 +1,18 @@
+# render.yaml — Render.com service configuration for TransactFlowOS Backend
+#
+# Deploy: connect your GitHub repo in Render dashboard,
+# then Render auto-detects this file.
+
+services:
+  - type: web                       # "web" allows WebSocket upgrades on Render
+    name: transactflowos-ws
+    runtime: python
+    rootDir: Backend                # only the Backend folder
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      # Paste the full contents of serviceAccountKey.json as a single-line string
+      # in Render Dashboard → Environment → FIREBASE_CREDENTIALS_JSON
+      - key: FIREBASE_CREDENTIALS_JSON
+        sync: false                 # mark as secret — enter manually in dashboard
+      # WS_HOST and PORT are set automatically by Render; no need to add them here
