@@ -43,17 +43,44 @@ logging.basicConfig(
 )
 log = logging.getLogger("transactflow-ws")
 
-# Firebase Admin init (reads GOOGLE_APPLICATION_CREDENTIALS from env)
-_cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "serviceAccountKey.json")
+# ─────────────────────────────────────────────────────────────────
+# Firebase Admin init
+#
+# Two credential strategies (tried in order):
+#   1. FIREBASE_CREDENTIALS_JSON env var — full JSON string.
+#      Set this in Render / any cloud host (paste the service-account
+#      JSON as a single-line string in the env var).
+#   2. Local file pointed to by GOOGLE_APPLICATION_CREDENTIALS
+#      (defaults to serviceAccountKey.json for local dev).
+# ─────────────────────────────────────────────────────────────────
 if not firebase_admin._apps:
-    cred = credentials.Certificate(_cred_path)
+    _cred_json_str = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
+    if _cred_json_str:
+        # Cloud deployment: credentials stored as env-var JSON string
+        import json as _json
+        _cred_dict = _json.loads(_cred_json_str)
+        cred = credentials.Certificate(_cred_dict)
+        log.info("✅ Firebase Admin SDK initialised (env-var credentials)")
+    else:
+        # Local dev: read from serviceAccountKey.json file
+        _cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "serviceAccountKey.json")
+        if not os.path.exists(_cred_path):
+            log.error(
+                f"❌ Service account key not found: '{_cred_path}'\n"
+                "   → For local dev: place serviceAccountKey.json in Backend/\n"
+                "   → For Render:    set FIREBASE_CREDENTIALS_JSON env var"
+            )
+            raise FileNotFoundError(f"No Firebase credentials: {_cred_path}")
+        cred = credentials.Certificate(_cred_path)
+        log.info(f"✅ Firebase Admin SDK initialised (file: {_cred_path})")
     firebase_admin.initialize_app(cred)
-    log.info("✅ Firebase Admin SDK initialised")
 
 db = fa_firestore.client()
 
-WS_HOST = os.getenv("WS_HOST", "localhost")
-WS_PORT = int(os.getenv("WS_PORT", "8080"))
+# Render assigns PORT automatically; fall back to 8080 for local dev.
+# Host must be 0.0.0.0 on Render so the container accepts external traffic.
+WS_HOST = os.getenv("WS_HOST", "0.0.0.0")
+WS_PORT = int(os.getenv("PORT", os.getenv("WS_PORT", "8080")))
 AUTH_TIMEOUT_SECONDS = 15
 
 # ─────────────────────────────────────────────────────────────────
