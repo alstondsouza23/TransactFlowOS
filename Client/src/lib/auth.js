@@ -14,7 +14,6 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 import { auth, db }    from './firebase';
 import useAuthStore    from '../store/authStore';
-import usersData       from '../../data/user.json';
 
 // ── UID blocklist ────────────────────────────────────────────────
 // These two UIDs belong exclusively to the Employee/Admin desktop app.
@@ -28,15 +27,11 @@ const BLOCKED_UIDS = new Set([
 // ── Helpers ──────────────────────────────────────────────────────
 
 /**
- * Resolve a human-readable display name for a given email address.
- * 1. Search the local users.json for a matching entry.
- * 2. Fall back to the email prefix (everything before @).
+ * Derive a fallback display name from an email address.
+ * e.g. john.doe@gmail.com → "john.doe"
  */
-function resolveDisplayName(email) {
-  const match = usersData.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase()
-  );
-  return match ? match.name : email.split('@')[0];
+function emailPrefix(email) {
+  return email.split('@')[0];
 }
 
 /**
@@ -85,8 +80,17 @@ export async function loginWithEmail(email, password) {
     throw 'Access denied. Please use the Employee portal.';
   }
 
-  // 3. Resolve display name
-  const displayName = resolveDisplayName(firebaseUser.email);
+  // 3. Resolve display name — read from Firestore first (pre-seeded or previous login)
+  //    Fall back to email prefix for any unknown user.
+  let displayName;
+  try {
+    const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
+    displayName = (snap.exists() && snap.data().name)
+      ? snap.data().name
+      : emailPrefix(firebaseUser.email);
+  } catch {
+    displayName = emailPrefix(firebaseUser.email);
+  }
 
   // 4. Persist to Firestore (merge — never overwrites existing fields)
   await persistSession(firebaseUser.uid, displayName, firebaseUser.email);

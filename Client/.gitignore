@@ -26,3 +26,6 @@ dist-ssr
 # Environment variables — never commit these
 .env
 .env.*
+
+# Local data — moved to Firestore
+data/user.json
