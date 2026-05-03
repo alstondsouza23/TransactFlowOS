@@ -1,19 +1,36 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate }     from 'react-router-dom';
+import { loginWithEmail }  from '../lib/auth';
+import useAuthStore        from '../store/authStore';
 
 const Login = () => {
-    const [email, setEmail] = useState('');
+    const [email,    setEmail]    = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [loading,  setLoading]  = useState(false);
+    const [error,    setError]    = useState(null);
+
     const navigate = useNavigate();
 
-    const handleLogin = (e) => {
+    // If already authenticated, bounce to dashboard immediately
+    const uid = useAuthStore((s) => s.uid);
+    if (uid) {
+        navigate('/dashboard', { replace: true });
+        return null;
+    }
+
+    const handleLogin = async (e) => {
         e.preventDefault();
-        if (email.includes('@') && password.length >= 6) {
-            console.log('Logging in with:', email);
-            // Mock handler: Redirect to Dashboard upon successful entry
-            navigate('/dashboard');
-        } else {
-            alert('Please enter a valid email and password (min 6 characters).');
+        setError(null);
+        setLoading(true);
+        try {
+            await loginWithEmail(email, password);
+            navigate('/dashboard', { replace: true });
+        } catch (err) {
+            // err is already a human-readable string from auth.js
+            setError(typeof err === 'string' ? err : 'Sign-in failed. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -31,33 +48,88 @@ const Login = () => {
                 <h1 style={styles.title}>TransactFlowOS</h1>
                 <h2 style={styles.subtitle}>MEMBER PORTAL</h2>
 
+                {/* Inline Error Banner */}
+                {error && (
+                    <div style={styles.errorBanner}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="#b91c1c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span>{error}</span>
+                    </div>
+                )}
+
                 {/* Input Form */}
                 <form onSubmit={handleLogin} style={styles.form}>
                     <label style={styles.label}>Email Address</label>
-                    <div style={styles.inputGroup}>
+                    <div style={{
+                        ...styles.inputGroup,
+                        borderColor: error ? '#fca5a5' : '#e2e8f0',
+                    }}>
                         <input
                             type="email"
                             style={styles.input}
                             placeholder="name@company.com"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e) => { setEmail(e.target.value); setError(null); }}
                             autoFocus
+                            disabled={loading}
+                            required
                         />
                     </div>
 
                     <label style={{ ...styles.label, marginTop: '20px' }}>Password</label>
-                    <div style={styles.inputGroup}>
+                    <div style={{
+                        ...styles.inputGroup,
+                        borderColor: error ? '#fca5a5' : '#e2e8f0',
+                        position: 'relative',
+                    }}>
                         <input
-                            type="password"
-                            style={styles.input}
+                            type={showPassword ? "text" : "password"}
+                            style={{ ...styles.input, paddingRight: '44px' }}
                             placeholder="••••••••"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(e) => { setPassword(e.target.value); setError(null); }}
+                            disabled={loading}
+                            required
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            style={styles.eyeButton}
+                            disabled={loading}
+                            tabIndex="-1"
+                        >
+                            {showPassword ? (
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                            ) : (
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            )}
+                        </button>
                     </div>
 
-                    <button type="submit" style={styles.button}>
-                        Sign In
+                    <button
+                        type="submit"
+                        style={{
+                            ...styles.button,
+                            opacity: loading ? 0.7 : 1,
+                            cursor:  loading ? 'not-allowed' : 'pointer',
+                        }}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <span style={styles.buttonInner}>
+                                <span style={styles.btnSpinner} /> Signing in…
+                            </span>
+                        ) : 'Sign In'}
                     </button>
                 </form>
 
@@ -88,14 +160,14 @@ const Login = () => {
     );
 };
 
-// Styles object for clean inline styling
+// ── Styles ────────────────────────────────────────────────────────
 const styles = {
     container: {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        backgroundColor: '#f8f9fa', // Light grey background
+        backgroundColor: '#f8f9fa',
         padding: '20px',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
     },
@@ -121,17 +193,33 @@ const styles = {
         marginBottom: '16px',
     },
     title: {
-        color: '#1b3664', // Dark blue
+        color: '#1b3664',
         fontSize: '24px',
         fontWeight: '700',
         margin: '0 0 6px 0',
     },
     subtitle: {
-        color: '#8c95a1', // Muted grey
+        color: '#8c95a1',
         fontSize: '12px',
         fontWeight: '600',
         letterSpacing: '1px',
-        margin: '0 0 32px 0',
+        margin: '0 0 24px 0',
+    },
+    errorBanner: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        backgroundColor: '#fef2f2',
+        border: '1px solid #fca5a5',
+        borderRadius: '8px',
+        padding: '10px 14px',
+        marginBottom: '16px',
+        width: '100%',
+        boxSizing: 'border-box',
+        color: '#b91c1c',
+        fontSize: '13px',
+        fontWeight: '500',
+        lineHeight: '1.4',
     },
     form: {
         width: '100%',
@@ -153,8 +241,8 @@ const styles = {
         height: '48px',
         backgroundColor: '#ffffff',
         marginBottom: '4px',
+        transition: 'border-color 0.15s ease',
     },
-
     input: {
         flex: 1,
         border: 'none',
@@ -165,6 +253,23 @@ const styles = {
         backgroundColor: 'transparent',
         width: '100%',
         letterSpacing: '0.5px',
+    },
+    eyeButton: {
+        position: 'absolute',
+        right: '4px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        border: 'none',
+        background: 'transparent',
+        width: '40px',
+        height: '40px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        padding: 0,
+        borderRadius: '6px',
+        transition: 'background-color 0.2s ease',
     },
     button: {
         backgroundColor: '#1b3664',
@@ -177,7 +282,24 @@ const styles = {
         marginTop: '32px',
         cursor: 'pointer',
         width: '100%',
-        transition: 'background-color 0.2s ease',
+        transition: 'background-color 0.2s ease, opacity 0.2s ease',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    buttonInner: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+    },
+    btnSpinner: {
+        display: 'inline-block',
+        width: '16px',
+        height: '16px',
+        borderRadius: '50%',
+        border: '2px solid rgba(255,255,255,0.4)',
+        borderTop: '2px solid #ffffff',
+        animation: 'spin 0.65s linear infinite',
     },
     securedContainer: {
         display: 'flex',
@@ -222,5 +344,13 @@ const styles = {
         fontSize: '12px',
     },
 };
+
+// Inject spinner keyframes (reuses auth provider's id-check pattern)
+if (typeof document !== 'undefined' && !document.getElementById('auth-spinner-style')) {
+    const style = document.createElement('style');
+    style.id = 'auth-spinner-style';
+    style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+    document.head.appendChild(style);
+}
 
 export default Login;

@@ -1,5 +1,8 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth }   from '../lib/firebase';
+import useAuthStore from '../store/authStore';
 
 // ── Nav Items ──────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
@@ -58,8 +61,16 @@ const NAV_ITEMS = [
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 const Layout = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate     = useNavigate();
+  const location     = useLocation();
+  const displayName  = useAuthStore((s) => s.displayName) ?? 'M';
+  const { clear }    = useAuthStore.getState();
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    clear();
+    navigate('/', { replace: true });
+  };
 
   return (
     <div style={styles.shell}>
@@ -95,6 +106,21 @@ const Layout = () => {
               </button>
             );
           })}
+
+          {/* Sign-out avatar button */}
+          <button
+            onClick={handleSignOut}
+            title="Sign out"
+            style={styles.navItem}
+            aria-label="Sign out"
+          >
+            <div style={styles.avatarCircle}>
+              {displayName.charAt(0).toUpperCase()}
+            </div>
+            <span style={{ ...styles.navLabel, color: '#94a3b8', fontWeight: '500' }}>
+              Sign Out
+            </span>
+          </button>
         </nav>
 
       </div>
@@ -171,6 +197,20 @@ const styles = {
     height: '4px',
     borderRadius: '50%',
     backgroundColor: '#0f172a',
+  },
+  /* Avatar circle shown on the sign-out nav button */
+  avatarCircle: {
+    width: '26px',
+    height: '26px',
+    borderRadius: '50%',
+    backgroundColor: '#e2e8f0',
+    color: '#0f172a',
+    fontSize: '11px',
+    fontWeight: '700',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid #cbd5e1',
   },
 };
 

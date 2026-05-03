@@ -1,5 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import useAuthStore from '../store/authStore';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Icons = {
@@ -41,6 +44,11 @@ const recentActivity = [
 // ── Component ─────────────────────────────────────────────────────────────────
 const Dashboard = () => {
   const navigate = useNavigate();
+  const displayName = useAuthStore((s) => s.displayName) ?? 'Member';
+  const uid         = useAuthStore((s) => s.uid) ?? '';
+
+  // Show first 8 chars of UID as a short member identifier
+  const memberId = uid ? uid.slice(0, 8).toUpperCase() : '—';
 
   return (
     <div style={s.page}>
@@ -48,10 +56,10 @@ const Dashboard = () => {
       {/* ── Header ──────────────────────────────────────────────── */}
       <div style={s.header}>
         <div>
-          <p style={s.greeting}>Hello, {user.name}</p>
-          <p style={s.memberId}>ID: {user.id}</p>
+          <p style={s.greeting}>Hello, {displayName}</p>
+          <p style={s.memberId}>ID: {memberId}</p>
         </div>
-        <div style={s.avatar}>{user.name.charAt(0)}</div>
+        <div style={s.avatar}>{displayName.charAt(0).toUpperCase()}</div>
       </div>
 
       {/* ── Payment Due Hero Card ────────────────────────────────── */}
