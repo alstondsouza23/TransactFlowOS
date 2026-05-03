@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-    const [phoneNumber, setPhoneNumber] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const navigate = useNavigate();
 
-    const handleSendOTP = (e) => {
+    const handleLogin = (e) => {
         e.preventDefault();
-        if (phoneNumber.length >= 10) {
-            console.log('Sending OTP to:', '+91' + phoneNumber);
+        if (email.includes('@') && password.length >= 6) {
+            console.log('Logging in with:', email);
             // Mock handler: Redirect to Dashboard upon successful entry
             navigate('/dashboard');
         } else {
-            alert('Please enter a valid 10-digit mobile number.');
+            alert('Please enter a valid email and password (min 6 characters).');
         }
     };
 
@@ -31,23 +32,32 @@ const Login = () => {
                 <h2 style={styles.subtitle}>MEMBER PORTAL</h2>
 
                 {/* Input Form */}
-                <form onSubmit={handleSendOTP} style={styles.form}>
-                    <label style={styles.label}>Mobile Number</label>
+                <form onSubmit={handleLogin} style={styles.form}>
+                    <label style={styles.label}>Email Address</label>
                     <div style={styles.inputGroup}>
-                        <div style={styles.prefix}>+91</div>
                         <input
-                            type="tel"
-                            style={{ ...styles.input, backgroundColor: '#ffffff' }}
-                            placeholder="98765 43210"
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                            maxLength={10}
+                            type="email"
+                            style={styles.input}
+                            placeholder="name@company.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             autoFocus
                         />
                     </div>
 
+                    <label style={{ ...styles.label, marginTop: '20px' }}>Password</label>
+                    <div style={styles.inputGroup}>
+                        <input
+                            type="password"
+                            style={styles.input}
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
+                    </div>
+
                     <button type="submit" style={styles.button}>
-                        Send OTP
+                        Sign In
                     </button>
                 </form>
 
@@ -60,7 +70,6 @@ const Login = () => {
                     <span style={styles.securedText}>Secured by Firebase</span>
                 </div>
 
-                {/* Divider */}
                 <div style={styles.divider}></div>
 
                 {/* Terms Text */}
@@ -130,10 +139,10 @@ const styles = {
         flexDirection: 'column',
     },
     label: {
-        color: '#4a5568',
-        fontSize: '14px',
-        fontWeight: '600',
-        marginBottom: '8px',
+        color: '#64748b',
+        fontSize: '13px',
+        fontWeight: '500',
+        marginBottom: '10px',
         alignSelf: 'flex-start',
     },
     inputGroup: {
@@ -143,18 +152,9 @@ const styles = {
         overflow: 'hidden',
         height: '48px',
         backgroundColor: '#ffffff',
+        marginBottom: '4px',
     },
-    prefix: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '0 16px',
-        backgroundColor: '#ffffff',
-        borderRight: '1px solid #e2e8f0',
-        color: '#64748b',
-        fontSize: '15px',
-        fontWeight: '500',
-    },
+
     input: {
         flex: 1,
         border: 'none',
@@ -162,6 +162,7 @@ const styles = {
         fontSize: '15px',
         outline: 'none',
         color: '#1e293b',
+        backgroundColor: 'transparent',
         width: '100%',
         letterSpacing: '0.5px',
     },
@@ -170,10 +171,10 @@ const styles = {
         color: '#ffffff',
         border: 'none',
         borderRadius: '8px',
-        height: '48px',
+        height: '52px',
         fontSize: '16px',
-        fontWeight: '600',
-        marginTop: '24px',
+        fontWeight: '700',
+        marginTop: '32px',
         cursor: 'pointer',
         width: '100%',
         transition: 'background-color 0.2s ease',
@@ -183,29 +184,30 @@ const styles = {
         alignItems: 'center',
         justifyContent: 'center',
         gap: '6px',
-        marginTop: '24px',
+        marginTop: '32px',
     },
     securedText: {
         color: '#94a3b8',
-        fontSize: '13px',
+        fontSize: '12px',
         fontWeight: '500',
     },
     divider: {
         height: '1px',
         backgroundColor: '#f1f5f9',
         width: '100%',
-        margin: '32px 0 24px 0',
+        margin: '48px 0 32px 0',
     },
     termsText: {
         color: '#94a3b8',
-        fontSize: '12px',
+        fontSize: '11px',
         textAlign: 'center',
         lineHeight: '1.5',
-        margin: '0 0 24px 0',
+        margin: '0 0 32px 0',
     },
     footerLinks: {
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: '12px',
     },
     link: {
