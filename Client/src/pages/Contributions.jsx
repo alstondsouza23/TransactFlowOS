@@ -50,7 +50,7 @@ const Contributions = () => {
       </div>
 
       {/* Summary Cards */}
-      <div style={styles.summaryGrid}>
+      <div className="summaryGrid" style={styles.summaryGrid}>
         <div style={styles.card}>
           <div style={styles.cardHeader}>
             <span style={styles.cardLabel}>TOTAL CONTRIBUTED</span>
@@ -112,7 +112,7 @@ const Contributions = () => {
       </div>
 
       {/* Upcoming Payments & Foreman Note Container */}
-      <div style={styles.bottomGrid}>
+      <div className="bottomGrid" style={styles.bottomGrid}>
 
         {/* Upcoming Payments */}
         <div style={styles.upcomingCard}>
@@ -165,6 +165,19 @@ const Contributions = () => {
         onClose={() => setModalOpen(false)}
         transaction={transaction}
       />
+      {/* Global CSS for responsiveness */}
+      <style>{`
+        @media (max-width: 1023px) {
+          .summaryGrid { flex-direction: column !important; }
+          .bottomGrid { flex-direction: column !important; }
+          h1 { font-size: 24px !important; }
+        }
+        @media (min-width: 1024px) {
+          .summaryGrid { flex-direction: row !important; }
+          .bottomGrid { flex-direction: row !important; }
+          .bottomGrid > div { flex: 1 !important; }
+        }
+      `}</style>
     </div>
   );
 };
@@ -192,7 +205,6 @@ const styles = {
   },
   summaryGrid: {
     display: 'flex',
-    flexDirection: 'column',
     gap: '16px',
     marginBottom: '24px',
   },
@@ -276,7 +288,6 @@ const styles = {
   },
   bottomGrid: {
     display: 'flex',
-    flexDirection: 'column',
     gap: '24px',
   },
   upcomingCard: {

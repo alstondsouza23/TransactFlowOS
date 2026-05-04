@@ -58,7 +58,7 @@ const GroupOverview = () => {
           </div>
         </div>
 
-        <div style={styles.statsGrid}>
+        <div className="statsGrid" style={styles.statsGrid}>
           <div style={styles.statBox}>
             <span style={styles.statLabel}>👥 MEMBERS</span>
             <span style={styles.statValue}>{groupDetails.members}</span>
@@ -82,7 +82,7 @@ const GroupOverview = () => {
       <div style={styles.sectionHeader}>
         <h3 style={styles.sectionTitle}>🛡️ Pool Health Metrics</h3>
       </div>
-      <div style={styles.metricsContainer}>
+      <div className="metricsContainer" style={styles.metricsContainer}>
         <div style={styles.metricCard}>
           <div style={styles.metricTop}>
             <span style={styles.metricLabel}>TOTAL POOL CAPITAL</span>
@@ -120,7 +120,7 @@ const GroupOverview = () => {
 
       <div style={styles.memberList}>
         {members.map((member, index) => (
-          <div key={member.id} style={{
+          <div key={member.id} className="memberItem" style={{
             ...styles.memberItem,
             borderBottom: index === members.length - 1 ? 'none' : '1px solid #f1f5f9'
           }}>
@@ -160,6 +160,22 @@ const GroupOverview = () => {
           </div>
         ))}
       </div>
+
+      {/* Global CSS for responsiveness */}
+      <style>{`
+        @media (max-width: 1023px) {
+          h1 { font-size: 24px !important; }
+          .metricsContainer { flex-direction: column !important; }
+        }
+        @media (min-width: 1024px) {
+          .statsGrid { grid-template-columns: repeat(4, 1fr) !important; }
+          .metricsContainer { flex-direction: row !important; }
+          .metricsContainer > div { flex: 1 !important; }
+          .memberItem { flex-direction: row !important; justify-content: space-between !important; align-items: center !important; }
+          .memberBottom { border-top: none !important; padding-top: 0 !important; gap: 40px !important; }
+          .memberTop { flex: 1 !important; }
+        }
+      `}</style>
     </div>
   );
 };

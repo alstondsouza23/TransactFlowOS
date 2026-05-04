@@ -51,8 +51,8 @@ const Loans = () => {
       </div>
 
       {/* ── Application Form (Ghosted/Disabled) ────────────────── */}
-      <div style={s.formContainer}>
-        <div style={s.formGhostOverlay}>
+      <div className="formContainer" style={s.formContainer}>
+        <div className="formGhostOverlay" style={s.formGhostOverlay}>
           <div style={s.ghostContent}>
              <div style={s.ghostIcon}>
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#e2e8f0" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
@@ -63,7 +63,7 @@ const Loans = () => {
           </div>
         </div>
         
-        <div style={s.formContent}>
+        <div className="formContent" style={s.formContent}>
           <div style={s.formLeft}>
             <h2 style={s.sectionTitle}>Apply for a New Loan</h2>
             
@@ -88,7 +88,7 @@ const Loans = () => {
 
             <div style={s.inputGroup}>
               <label style={s.label}>Repayment Tenure</label>
-              <div style={s.tenureGrid}>
+              <div className="tenureGrid" style={s.tenureGrid}>
                 {['6 Months', '12 Months', '18 Months', '24 Months'].map((t) => (
                   <div key={t} style={{...s.tenureBtn, backgroundColor: t === '12 Months' ? '#1b3664' : '#ffffff', color: t === '12 Months' ? '#ffffff' : '#64748b'}}>
                     {t}
@@ -111,7 +111,7 @@ const Loans = () => {
       </div>
 
       {/* ── History Table ──────────────────────────────────────── */}
-      <div style={s.historyHeader}>
+      <div className="historyHeader" style={s.historyHeader}>
         <div style={s.historyTitleRow}>
           <Icons.History />
           <h2 style={s.historyTitle}>Loan Application History</h2>
@@ -119,8 +119,8 @@ const Loans = () => {
         <span style={s.recordCount}>Showing 3 records</span>
       </div>
 
-      <div style={s.tableCard}>
-        <table style={s.table}>
+      <div className="tableCard" style={s.tableCard}>
+        <table className="table" style={s.table}>
           <thead>
             <tr style={s.thRow}>
               <th style={s.th}>ID</th>
@@ -174,14 +174,29 @@ const Loans = () => {
       </div>
 
       {/* ── System Footer ──────────────────────────────────────── */}
-      <div style={s.systemFooter}>
+      <div className="systemFooter" style={s.systemFooter}>
         <p style={s.copyright}>© 2024 TransactFlowOS • Secured by Firebase</p>
-        <div style={s.systemLinks}>
+        <div className="systemLinks" style={s.systemLinks}>
           <span>Privacy Policy</span>
           <span>Support</span>
           <span>System Status: <span style={{color: '#10b981', fontWeight: '700'}}>Online</span></span>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          h1 { font-size: 24px !important; }
+          .formContainer { padding: 24px !important; }
+          .formContent { flex-direction: column !important; gap: 24px !important; }
+          .formGhostOverlay { width: 100% !important; height: 100% !important; border-left: none !important; }
+          .tenureGrid { grid-template-columns: repeat(2, 1fr) !important; }
+          .tableCard { overflow-x: auto !important; }
+          .table { min-width: 800px !important; }
+          .historyHeader { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+          .systemFooter { flex-direction: column !important; gap: 16px !important; text-align: center !important; }
+          .systemLinks { justify-content: center !important; width: 100% !important; }
+        }
+      `}</style>
     </div>
   );
 };

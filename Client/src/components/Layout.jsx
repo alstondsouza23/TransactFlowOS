@@ -166,13 +166,12 @@ const Layout = () => {
       <style>{`
         @media (max-width: 1023px) {
           aside { display: none !important; }
+          div[style*="marginLeft"] { margin-left: 0 !important; }
           header { padding: 0 16px !important; }
-          header span { font-size: 14px !important; }
-          .headerSubtitle { display: none !important; }
-          .headerDivider { display: none !important; }
-          .profileInfo { display: none !important; }
-          main { padding: 16px !important; }
+          .headerSubtitle, .headerDivider, .profileInfo { display: none !important; }
+          main { padding: 16px 16px 80px 16px !important; }
           nav[style*="mobileNav"] { display: flex !important; }
+          .mobileLogo { display: flex !important; }
         }
         @media (min-width: 1024px) {
           nav[style*="mobileNav"] { display: none !important; }

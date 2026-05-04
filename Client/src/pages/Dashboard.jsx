@@ -52,15 +52,7 @@ const Dashboard = () => {
 
   return (
     <div style={s.page}>
-
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div style={s.header}>
-        <div>
-          <p style={s.greeting}>Hello, {displayName}</p>
-          <p style={s.memberId}>ID: {memberId}</p>
-        </div>
-        <div style={s.avatar}>{displayName.charAt(0).toUpperCase()}</div>
-      </div>
+      {/* Redundant header removed - now handled by Layout.jsx */}
 
       {/* ── Payment Due Hero Card ────────────────────────────────── */}
       <div style={s.dueCard}>
@@ -161,10 +153,12 @@ const Dashboard = () => {
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = {
   page: {
-    padding: '24px 18px 60px',
+    padding: '0 0 60px',
     backgroundColor: '#f8fafc',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    fontFamily: 'Inter, -apple-system, sans-serif',
     boxSizing: 'border-box',
+    maxWidth: '1200px',
+    margin: '0 auto',
   },
   // Header
   header: {
