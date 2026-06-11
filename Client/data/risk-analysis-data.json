@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "groupId": "GRP-001",
+    "groupName": "Sunrise Chit Fund",
+    "analysedAt": "2025-06-07T10:00:00Z",
+    "totalMembers": 20,
+    "monthlyContribution": 5000,
+    "chitValue": 100000,
+    "groupStartDate": "2024-01-01",
+    "cycleMonth": 6,
+    "totalCycles": 20
+  },
+
+  "healthScore": {
+    "score": 72,
+    "status": "Healthy",
+    "commentary": "Sunrise Chit Fund is performing steadily. Collection rates are strong but 3 high-risk members require close monitoring to prevent pool erosion."
+  },
+
+  "kpis": {
+    "collectionRatePct": 88.5,
+    "collectionRateTrend": 2.1,
+    "defaultRatePct": 11.5,
+    "defaultRateTrend": -0.8,
+    "poolUtilisationPct": 65.2,
+    "poolUtilisationTrend": 1.4,
+    "avgMemberRiskScore": 34.8,
+    "avgMemberRiskTrend": -3.2,
+    "totalCollectedINR": 885000,
+    "totalExpectedINR": 1000000,
+    "activeLoans": 3,
+    "totalLoanAmountINR": 285000
+  },
+
+  "collectionTrend": [
+    { "month": "Jan", "expected": 100000, "collected": 81000 },
+    { "month": "Feb", "expected": 100000, "collected": 87000 },
+    { "month": "Mar", "expected": 100000, "collected": 90000 },
+    { "month": "Apr", "expected": 100000, "collected": 84000 },
+    { "month": "May", "expected": 100000, "collected": 93000 },
+    { "month": "Jun", "expected": 100000, "collected": 88500 }
+  ],
+
+  "riskDistribution": {
+    "low": 12,
+    "medium": 5,
+    "high": 3
+  },
+
+  "poolHealth": {
+    "total": 1000000,
+    "allocated": 652000,
+    "safeReserve": 150000,
+    "buffer": 198000,
+    "safeState": true,
+    "disbursedToWinners": 400000,
+    "heldInLoans": 252000
+  },
+
+  "bankruptcyDistance": {
+    "currentPoolBalanceINR": 348000,
+    "minimumViableReserveINR": 100000,
+    "criticalThresholdINR": 50000,
+    "monthlyNetInflowINR": 88500,
+    "monthlyObligationsINR": 105000,
+    "netMonthlyBurnINR": 16500,
+    "projectedMonthsToMinViable": 15,
+    "projectedMonthsToCritical": 18,
+    "safetyMarginPct": 85,
+    "runway": [
+      { "month": "Jun",  "balance": 348000, "projection": null },
+      { "month": "Jul",  "balance": null,   "projection": 331500 },
+      { "month": "Aug",  "balance": null,   "projection": 315000 },
+      { "month": "Sep",  "balance": null,   "projection": 298500 },
+      { "month": "Oct",  "balance": null,   "projection": 282000 },
+      { "month": "Nov",  "balance": null,   "projection": 265500 },
+      { "month": "Dec",  "balance": null,   "projection": 249000 },
+      { "month": "Jan",  "balance": null,   "projection": 232500 },
+      { "month": "Feb",  "balance": null,   "projection": 216000 },
+      { "month": "Mar",  "balance": null,   "projection": 199500 },
+      { "month": "Apr",  "balance": null,   "projection": 183000 },
+      { "month": "May",  "balance": null,   "projection": 166500 }
+    ]
+  },
+
+  "memberScores": [
+    { "uid": "m01", "name": "Ravi Kumar",      "score": 85, "riskLevel": "High",   "trend": "worsening",  "missedPayments": 3, "activeLoan": true,  "loanAmountINR": 80000 },
+    { "uid": "m02", "name": "Suresh Nair",     "score": 78, "riskLevel": "High",   "trend": "stable",     "missedPayments": 2, "activeLoan": true,  "loanAmountINR": 95000 },
+    { "uid": "m03", "name": "Kavitha Reddy",   "score": 72, "riskLevel": "High",   "trend": "worsening",  "missedPayments": 2, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m04", "name": "Arun Sharma",     "score": 55, "riskLevel": "Medium", "trend": "stable",     "missedPayments": 1, "activeLoan": true,  "loanAmountINR": 110000 },
+    { "uid": "m05", "name": "Priya Menon",     "score": 48, "riskLevel": "Medium", "trend": "improving",  "missedPayments": 1, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m06", "name": "Deepak Pillai",   "score": 45, "riskLevel": "Medium", "trend": "stable",     "missedPayments": 1, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m07", "name": "Meena Iyer",      "score": 42, "riskLevel": "Medium", "trend": "improving",  "missedPayments": 1, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m08", "name": "Sanjay Patel",    "score": 40, "riskLevel": "Medium", "trend": "stable",     "missedPayments": 1, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m09", "name": "Lakshmi Devi",    "score": 22, "riskLevel": "Low",    "trend": "improving",  "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m10", "name": "Venkat Rao",      "score": 18, "riskLevel": "Low",    "trend": "stable",     "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m11", "name": "Geetha Krishnan", "score": 15, "riskLevel": "Low",    "trend": "improving",  "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m12", "name": "Harish Babu",     "score": 14, "riskLevel": "Low",    "trend": "stable",     "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m13", "name": "Usha Kumari",     "score": 12, "riskLevel": "Low",    "trend": "improving",  "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m14", "name": "Ramesh Babu",     "score": 10, "riskLevel": "Low",    "trend": "improving",  "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m15", "name": "Nalini Rao",      "score": 10, "riskLevel": "Low",    "trend": "stable",     "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m16", "name": "Kiran Das",       "score": 8,  "riskLevel": "Low",    "trend": "improving",  "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m17", "name": "Sunita Joshi",    "score": 8,  "riskLevel": "Low",    "trend": "stable",     "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m18", "name": "Manoj Tiwari",    "score": 6,  "riskLevel": "Low",    "trend": "improving",  "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m19", "name": "Rekha Singh",     "score": 5,  "riskLevel": "Low",    "trend": "stable",     "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 },
+    { "uid": "m20", "name": "Anand Verma",     "score": 4,  "riskLevel": "Low",    "trend": "improving",  "missedPayments": 0, "activeLoan": false, "loanAmountINR": 0 }
+  ]
+}

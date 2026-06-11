@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Staff check (admin + employee) ─────────────────────────────────────
+    // These two UIDs are the only accounts that can access the Employee/Admin
+    // desktop. Any other UID is a regular member on the Client web app.
+    function isStaff() {
+      return request.auth != null && request.auth.uid in [
+        't5NfFm9NfOhgWpDHQg7C5LlYe4q1',   // admin@ac.in
+        'LSGBwob5COY39I7wuQZSJUHlWaY2'    // employee@ac.in
+      ];
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── users/{userId} ──────────────────────────────────────────────────────
+    match /users/{userId} {
+      // Members read/write their own doc.
+      // Staff (admin + employee) read/write any doc — needed for KYC queue.
+      allow read:   if isOwner(userId) || isStaff();
+      allow create: if isOwner(userId) || isStaff();
+      allow update: if isOwner(userId) || isStaff();
+      allow delete: if isStaff();
+    }
+
+    // ── kyc_queue ───────────────────────────────────────────────────────────
+    match /kyc_queue/{docId} {
+      // Staff (admin + employee) can read and write everything
+      allow read, write: if isStaff();
+      // Any authenticated member can CREATE their own KYC submission
+      allow create: if request.auth != null;
+    }
+
+    // ── loan_applications ───────────────────────────────────────────────────
+    match /loan_applications/{docId} {
+      // Member reads their own applications; staff reads all.
+      allow read: if isStaff() ||
+                     (request.auth != null &&
+                      resource.data.applicantUid == request.auth.uid);
+
+      // Members can create new applications for themselves.
+      allow create: if request.auth != null &&
+                       request.resource.data.applicantUid == request.auth.uid;
+
+      // Only staff can approve / reject (update or delete).
+      allow update, delete: if isStaff();
+    }
+
+    // ── audit_log ───────────────────────────────────────────────────────────
+    match /audit_log/{docId} {
+      allow read:  if isStaff();
+      allow write: if request.auth != null;
+    }
+
+    // ── kernel_state (system health docs) ───────────────────────────────────
+    match /kernel_state/{docId} {
+      allow read:  if isStaff();
+      allow write: if isStaff();
+    }
+
+    // ── auctions/{auctionId} ────────────────────────────────────────────────
+    // All mutations go through the Python WS server (Admin SDK — bypasses rules).
+    // Frontend only reads via onSnapshot — members and staff both need read.
+    match /auctions/{auctionId} {
+      allow read: if request.auth != null;
+      // No direct client writes — all mutations via Backend Admin SDK.
+      allow write: if isStaff();
+    }
+
+    // ── bids/{bidId} ────────────────────────────────────────────────────────
+    // Members read their own bids; staff reads all.
+    // No direct client writes — all via Backend Admin SDK.
+    match /bids/{bidId} {
+      allow read: if request.auth != null;
+      allow write: if isStaff();
+    }
+
+    // ── groups/{groupId} ────────────────────────────────────────────────────
+    match /groups/{groupId} {
+      allow read:  if request.auth != null;
+      allow write: if isStaff();
+    }
+  }
+}

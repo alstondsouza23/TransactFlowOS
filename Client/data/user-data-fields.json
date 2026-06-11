@@ -1,0 +1,111 @@
+{
+  "profile": {
+    "savings_impact": "₹8.42L",
+    "current_streak_months": 14,
+    "missed_payments_count": 1,
+    "active_loan_status": "None"
+  },
+  "financial_snapshot": {
+    "total_contributed": "₹1,80,000",
+    "remaining_contribution": "₹4,20,000",
+    "remaining_months": 28,
+    "active_loan_balance": "₹0.00",
+    "next_payment_due_date": "12 June 2024",
+    "next_payment_due_amount": "₹15,000"
+  },
+  "loans_and_credit": {
+    "new_loan_estimated_emi": "₹8,450",
+    "new_loan_interest_rate": "11.5%",
+    "active_loan_balance_alert": "₹1,06,800",
+    "recent_loan_history": [
+      {
+        "disbursed_amount": "₹1,20,000",
+        "disbursed_date": "Oct 2023"
+      },
+      {
+        "disbursed_amount": "₹45,000",
+        "disbursed_date": "Jan 2023"
+      }
+    ],
+    "full_loan_history": [
+      {
+        "loan_id": "LN-9921",
+        "principal": "₹50,000",
+        "purpose": "Medical",
+        "applied_date": "Oct 12, 2023",
+        "status": "Repaid",
+        "monthly_emi": "₹8,750"
+      },
+      {
+        "loan_id": "LN-1024",
+        "principal": "₹1,20,000",
+        "purpose": "Business Expansion",
+        "applied_date": "Jan 15, 2024",
+        "status": "Disbursed",
+        "monthly_emi": "₹11,200"
+      }
+    ]
+  },
+  "contributions": {
+    "summary": {
+      "total_contributed": "₹55,000",
+      "total_cycles": 11,
+      "missed_payments": 1,
+      "payment_streak_months": 7
+    },
+    "upcoming_payments": [
+      {
+        "cycle_id": 13,
+        "date": "Nov 10, 2024",
+        "amount": "₹5,000",
+        "type": "STANDARD DUE"
+      },
+      {
+        "cycle_id": 14,
+        "date": "Dec 10, 2024",
+        "amount": "₹5,000",
+        "type": "STANDARD DUE"
+      }
+    ],
+    "recent_timeline": [
+      {
+        "month": "October 2024",
+        "date_due": "Oct 10, 2024",
+        "date_paid": "Oct 08, 2024",
+        "amount": "₹5,000",
+        "status": "Paid",
+        "reference_id": "TXN-882190",
+        "type": "Monthly"
+      },
+      {
+        "month": "July 2024",
+        "date_due": "Jul 10, 2024",
+        "date_paid": "--",
+        "amount": "₹5,000",
+        "status": "Overdue",
+        "reference_id": "-",
+        "type": "Monthly"
+      }
+    ]
+  },
+  "group_performance_context": {
+    "total_pool_collection_percentage": "78%",
+    "total_pool_collected_amount": "₹14,50,000",
+    "total_pool_target_amount": "₹18,50,000",
+    "members_paid": 18,
+    "total_members": 24,
+    "active_defaults": 2,
+    "foreman_commission": "5.0%",
+    "remaining_cycles_months": 32,
+    "top_contributors": [
+      {
+        "name": "Anita S.",
+        "status": "Up to Date"
+      },
+      {
+        "name": "Suresh M.",
+        "status": "Early Payer"
+      }
+    ]
+  }
+}

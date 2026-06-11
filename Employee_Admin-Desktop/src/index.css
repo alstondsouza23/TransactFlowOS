@@ -1,0 +1,19 @@
+/* Google Fonts must come before all other @import statements */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --color-brand-blue: #1a2f55;
+  --color-brand-blue-hover: #142445;
+  --color-bg-base: #f6f8fb;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-base);
+  color: theme('colors.slate.700');
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

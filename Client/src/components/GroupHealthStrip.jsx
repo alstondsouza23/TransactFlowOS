@@ -1,0 +1,1 @@
+// Component for displaying group health status and metrics
