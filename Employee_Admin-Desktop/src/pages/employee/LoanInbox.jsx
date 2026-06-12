@@ -18,7 +18,7 @@ import {
   Bell, Search, ChevronLeft, ChevronRight,
   TrendingUp, TrendingDown, IndianRupee,
   Loader2, CheckCircle2, XCircle, AlertTriangle,
-  FileText, User, Calendar, ShieldCheck,
+  FileText, User, Calendar, ShieldCheck, Download,
 } from 'lucide-react';
 
 import { db }          from '../../lib/firestore';
@@ -27,6 +27,7 @@ import KernelMonitor   from '../../components/KernelMonitor';
 import useAuthStore    from '../../store/authStore';
 import { useWsAction } from '../../providers/WebSocketProvider';
 import { fmtName, fmtInitials } from '../../lib/fmtName';
+import { exportCsv } from '../../lib/exportCsv';
 
 // ─────────────────────────────────────────────────────────────────
 // EMI calculator — standard reducing balance formula
@@ -361,6 +362,27 @@ export default function LoanInbox() {
     { key: 'Rejected', label: 'Rejected', count: loans.filter((l) => l.status === 'Rejected').length },
   ];
 
+  // ── Export CSV ────────────────────────────────────────────────
+  const handleExport = useCallback(() => {
+    const COLS = [
+      { header: 'Applicant Name',  key: (r) => fmtName(r.applicantName ?? r.applicant_name) },
+      { header: 'Status',          key: 'status' },
+      { header: 'Amount (INR)',    key: (r) => r.requestedAmountINR   ?? r.requested_amount_inr   ?? '' },
+      { header: 'Purpose',         key: 'purpose' },
+      { header: 'Tenure (months)', key: (r) => r.tenureMonths         ?? r.tenure_months          ?? '' },
+      { header: 'Risk Score',      key: (r) => r.riskScore            ?? r.risk_score             ?? '' },
+      { header: 'Group ID',        key: 'groupId' },
+      { header: 'Applicant UID',   key: (r) => r.applicantUid         ?? r.applicant_uid          ?? '' },
+      { header: 'Submitted At',    key: (r) => {
+        const ts = r.submittedAt;
+        if (!ts) return '';
+        const d = ts?.toDate ? ts.toDate() : new Date(ts);
+        return d.toISOString().slice(0, 16).replace('T', ' ');
+      }},
+    ];
+    exportCsv(`loan_applications_${statusFilter.toLowerCase()}`, COLS, filtered);
+  }, [filtered, statusFilter]);
+
   return (
     <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter">
       <Sidebar activePage="Loan Inbox" />
@@ -371,7 +393,7 @@ export default function LoanInbox() {
           {/* Header */}
           <header className="h-16 px-8 flex items-center justify-between sticky top-0 bg-[#f6f8fb]/80 backdrop-blur-md z-20 border-b border-slate-100/50">
             <h1 className="text-xl font-bold text-[#1a2f55] tracking-tight">Loan Inbox</h1>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <div className="relative group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input
@@ -380,6 +402,12 @@ export default function LoanInbox() {
                   className="bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm outline-none w-72 shadow-sm"
                 />
               </div>
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+              >
+                <Download size={15} /> Export CSV
+              </button>
               <button className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-brand-blue hover:bg-white transition-all cursor-pointer border border-transparent hover:border-slate-100 shadow-sm relative">
                 <Bell size={20} />
                 {stats.active > 0 && <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-[#f6f8fb] animate-pulse" />}

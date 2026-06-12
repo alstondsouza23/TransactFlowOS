@@ -19,11 +19,13 @@ import {
   MessageSquare,
   Loader2,
   ChevronRight,
+  Download,
 } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
 import KernelMonitor from '../../components/KernelMonitor';
 import useWsStore from '../../store/wsStore';
 import { useWsAction } from '../../providers/WebSocketProvider';
+import { exportCsv } from '../../lib/exportCsv';
 
 // ─────────────────────────────────────────────────────────────────
 // Constants
@@ -189,6 +191,22 @@ export default function DefaultTracker() {
 
   const byStage = (stageKey) => filtered.filter((c) => c.recovery_stage === stageKey);
 
+  // ── Export CSV ──────────────────────────────────────────────
+  const handleExport = useCallback(() => {
+    const COLS = [
+      { header: 'Member Name',       key: 'member_name' },
+      { header: 'Recovery Stage',    key: 'recovery_stage' },
+      { header: 'Risk Level',        key: 'risk_level' },
+      { header: 'Overdue Amount (INR)', key: 'overdue_amount_inr' },
+      { header: 'Days Late',         key: 'days_late' },
+      { header: 'Phone',             key: 'phone' },
+      { header: 'Group ID',          key: 'group_id' },
+      { header: 'Loan ID',           key: 'loan_id' },
+      { header: 'Last Contact',      key: 'last_contact_date' },
+    ];
+    exportCsv('recovery_cases', COLS, filtered);
+  }, [filtered]);
+
   return (
     <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter">
       <Sidebar activePage="Recovery" />
@@ -231,6 +249,12 @@ export default function DefaultTracker() {
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                >
+                  <Download size={14} /> Export CSV
+                </button>
                 <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all">
                   <Filter size={14} /> View: All
                 </button>
