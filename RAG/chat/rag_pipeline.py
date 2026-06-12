@@ -1,61 +1,61 @@
 """
 RAG/chat/rag_pipeline.py
-Full RAG pipeline:
-  1. Embed user query (RETRIEVAL_QUERY task)
+Full RAG pipeline using direct Gemini REST API (no SDK):
+  1. Embed user query via embedder.py (embedContent REST)
   2. Search Pinecone with access-control metadata filter
   3. Build context prompt from retrieved chunks
-  4. Stream Gemini 1.5 Flash response token-by-token
+  4. Stream Gemini 1.5 Flash response via streamGenerateContent SSE
 """
 
+import asyncio
+import json
 import logging
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from config import GEMINI_API_KEY, GENERATION_MODEL
 
-from google import genai
-from google.genai import types
+import httpx
 from sync.embedder import embed_query
 from sync.pinecone_store import query_vectors
 
-log     = logging.getLogger("rag.chat")
-_client = genai.Client(api_key=GEMINI_API_KEY)
+log = logging.getLogger("rag.chat")
+
+_GEN_MODEL_ID = GENERATION_MODEL.replace("models/", "") if GENERATION_MODEL.startswith("models/") else GENERATION_MODEL
+_GEN_URL_V1  = f"https://generativelanguage.googleapis.com/v1/models/{_GEN_MODEL_ID}:streamGenerateContent?alt=sse"
+_GEN_URL_V1B = f"https://generativelanguage.googleapis.com/v1beta/models/{_GEN_MODEL_ID}:streamGenerateContent?alt=sse"
+_HEADERS     = {"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"}
 
 # ── System prompts ────────────────────────────────────────────────
 
-_MEMBER_SYSTEM = """You are a helpful financial assistant for TransactFlowOS — a community savings and loan platform (chit fund).
-Your job is to help members understand their account, KYC status, loans, auctions, and bids.
+_MEMBER_SYSTEM = (
+    "You are a helpful financial assistant for TransactFlowOS — a community savings and "
+    "loan platform (chit fund). Help members understand their account, KYC status, loans, "
+    "auctions, and bids.\n"
+    "Rules:\n"
+    "- Answer ONLY based on the context provided. Do not invent data.\n"
+    "- If context lacks info, say: \"I don't have that information right now.\"\n"
+    "- Be concise, friendly, and professional.\n"
+    "- Format Indian currency as ₹X,XX,XXX.\n"
+    "- Never reveal other members' private data."
+)
 
-Rules:
-- Answer ONLY based on the context provided below. Do not invent data.
-- If the context lacks information, say "I don't have that information in the system right now."
-- Be concise, friendly, and professional.
-- Format Indian currency as ₹X,XX,XXX (e.g. ₹5,25,252).
-- Never reveal other members' private information.
-"""
-
-_STAFF_SYSTEM = """You are an AI assistant for TransactFlowOS employees and administrators.
-You help staff review KYC submissions, loan applications, recovery cases, auction results, and audit logs.
-
-Rules:
-- Answer ONLY based on the context provided. Do not invent data.
-- Be precise, data-driven, and professional.
-- Format Indian currency as ₹X,XX,XXX.
-- You have access to all member data.
-"""
+_STAFF_SYSTEM = (
+    "You are an AI assistant for TransactFlowOS employees and administrators.\n"
+    "Help staff with KYC reviews, loan decisions, recovery cases, auction results, and audit logs.\n"
+    "Rules:\n"
+    "- Answer ONLY based on the provided context. Do not invent data.\n"
+    "- Be precise, data-driven, and professional.\n"
+    "- Format Indian currency as ₹X,XX,XXX.\n"
+    "- You have full visibility over all member data."
+)
 
 
-# ── Access filter ─────────────────────────────────────────────────
+# ── Access-control Pinecone filter ────────────────────────────────
 
 def _build_filter(uid: str, group_id: str | None, is_staff: bool) -> dict | None:
-    """
-    Pinecone metadata filter that enforces data-access rules:
-    - Staff: no filter (see everything)
-    - Member: see own docs + group-visible docs in their group
-    """
     if is_staff:
-        return None  # no restriction
+        return None  # staff sees everything
 
-    # Member can see: own docs OR group-wide docs in their group
     if group_id:
         return {
             "$or": [
@@ -68,11 +68,55 @@ def _build_filter(uid: str, group_id: str | None, is_staff: bool) -> dict | None
                 },
             ]
         }
-    # No group yet: only own docs
     return {"uid": {"$eq": uid}}
 
 
-# ── Main pipeline ─────────────────────────────────────────────────
+# ── Generation via streaming REST API ────────────────────────────
+
+async def _stream_generate(prompt: str, system: str):
+    """
+    Async generator that yields text tokens from Gemini 1.5 Flash via SSE.
+    Tries v1 first, then v1beta.
+    """
+    payload = {
+        "system_instruction": {"parts": [{"text": system}]},
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.25,
+            "maxOutputTokens": 1024,
+        },
+    }
+
+    for url in [_GEN_URL_V1, _GEN_URL_V1B]:
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                async with client.stream("POST", url, json=payload, headers=_HEADERS) as resp:
+                    if resp.status_code == 404:
+                        continue  # try next URL
+                    resp.raise_for_status()
+                    async for line in resp.aiter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        raw = line[5:].strip()
+                        if not raw or raw == "[DONE]":
+                            continue
+                        try:
+                            chunk = json.loads(raw)
+                            for cand in chunk.get("candidates", []):
+                                for part in cand.get("content", {}).get("parts", []):
+                                    text = part.get("text", "")
+                                    if text:
+                                        yield text
+                        except json.JSONDecodeError:
+                            continue
+            return  # success — done
+        except Exception as e:
+            log.error(f"[rag] Generation stream error ({url}): {e}")
+            if url == _GEN_URL_V1B:
+                yield f"\n\n⚠️ Generation failed: {e}"
+
+
+# ── Main RAG pipeline ─────────────────────────────────────────────
 
 async def stream_rag_response(
     user_message: str,
@@ -82,7 +126,7 @@ async def stream_rag_response(
     chat_history: list[dict],
 ):
     """
-    Async generator that yields text chunks as Gemini streams them.
+    Async generator — yields text chunks as Gemini streams them.
     chat_history: [{ "role": "user"|"model", "content": "..." }]
     """
     log.info(f"[rag] uid={uid} staff={is_staff} q={user_message[:60]!r}")
@@ -92,10 +136,10 @@ async def stream_rag_response(
         q_emb = await embed_query(user_message)
     except Exception as e:
         log.error(f"[rag] Embed failed: {e}")
-        yield "⚠️ Could not process your message right now. Please try again."
+        yield "⚠️ Could not process your message. Please try again."
         return
 
-    # 2. Retrieve relevant chunks from Pinecone
+    # 2. Search Pinecone
     try:
         chunks = query_vectors(
             embedding=q_emb,
@@ -104,51 +148,30 @@ async def stream_rag_response(
         )
     except Exception as e:
         log.error(f"[rag] Pinecone query failed: {e}")
-        yield "⚠️ Could not retrieve data right now. Please try again."
+        yield "⚠️ Could not retrieve data. Please try again."
         return
 
-    # 3. Build context (only include chunks with meaningful similarity)
+    # 3. Build context (only include sufficiently similar chunks)
     ctx_parts = [
         f"[{i+1}] {c['text']}"
         for i, c in enumerate(chunks)
         if c.get("score", 0) > 0.35 and c.get("text")
     ]
-    context = "\n\n".join(ctx_parts) if ctx_parts else "No relevant records found in the database."
+    context = "\n\n".join(ctx_parts) if ctx_parts else "No relevant records found."
 
-    # 4. Assemble conversation history for multi-turn chat
-    history = []
-    for msg in chat_history[-8:]:  # last 4 turns
-        history.append(types.Content(
-            role=msg["role"],
-            parts=[types.Part(text=msg["content"])],
-        ))
+    # 4. Assemble prompt with rolling history
+    history_text = ""
+    for msg in chat_history[-8:]:
+        role = "User" if msg["role"] == "user" else "Assistant"
+        history_text += f"\n{role}: {msg['content']}"
 
-    # Final user turn includes retrieved context + question
-    full_user_turn = (
-        f"Context from TransactFlowOS database:\n{context}\n\n"
-        f"My question: {user_message}"
+    full_prompt = (
+        (f"Conversation history:{history_text}\n\n" if history_text else "")
+        + f"Context from TransactFlowOS database:\n{context}\n\n"
+        + f"User question: {user_message}"
     )
 
-    # 5. Stream Gemini 1.5 Flash response
+    # 5. Stream response
     system = _STAFF_SYSTEM if is_staff else _MEMBER_SYSTEM
-    try:
-        stream = await _client.aio.models.generate_content_stream(
-            model=GENERATION_MODEL,
-            contents=history + [
-                types.Content(
-                    role="user",
-                    parts=[types.Part(text=full_user_turn)],
-                )
-            ],
-            config=types.GenerateContentConfig(
-                system_instruction=system,
-                temperature=0.25,
-                max_output_tokens=1024,
-            ),
-        )
-        async for chunk in stream:
-            if chunk.text:
-                yield chunk.text
-    except Exception as e:
-        log.error(f"[rag] Generation error: {e}")
-        yield f"\n\n⚠️ Response generation failed: {e}"
+    async for token in _stream_generate(full_prompt, system):
+        yield token

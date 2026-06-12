@@ -14,10 +14,10 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "transactflow-rag")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # Models
-# text-embedding-004 outputs 768 dims — available free on AI Studio
-EMBEDDING_MODEL  = "models/text-embedding-004"
+# gemini-embedding-001 = 768 dims, available on free tier with AQ. keys
+EMBEDDING_MODEL  = "models/gemini-embedding-001"
 EMBEDDING_DIM    = 768
-GENERATION_MODEL = "gemini-1.5-flash"
+GENERATION_MODEL = "gemini-2.0-flash"
 
 # ── Firebase Admin ────────────────────────────────────────────────
 FIREBASE_CREDENTIALS_JSON = os.getenv("FIREBASE_CREDENTIALS_JSON", "")
