@@ -382,6 +382,12 @@ async def handle_close_auction_internal(auction_id: str, group_id: str,
     winner_name      = w.get("bidderName", "Unknown")
     winning_bid_inr  = int(w.get("bidAmountINR", 0))
 
+    # ── Compute discount ───────────────────────────────────────────
+    auction_data    = a_doc.to_dict()
+    pot_amount      = int(auction_data.get("potAmountINR", winning_bid_inr) or winning_bid_inr)
+    discount_inr    = max(0, pot_amount - winning_bid_inr)
+    discount_pct    = round((discount_inr / pot_amount * 100), 2) if pot_amount > 0 else 0.0
+
     # ── Update auction ─────────────────────────────────────────────
     await _exe(lambda: _db().collection("auctions").document(auction_id).update({
         "status":        "closed",

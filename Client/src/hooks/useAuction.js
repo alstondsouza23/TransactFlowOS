@@ -43,6 +43,8 @@ export default function useAuction() {
   const timerRef = useRef(null);
 
   // ── Effect 3: users/{uid} → groupId + hasWon ──────────────────
+  const [userDocLoaded, setUserDocLoaded] = useState(false);
+
   useEffect(() => {
     if (!uid) return;
     const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
@@ -51,18 +53,19 @@ export default function useAuction() {
         if (d.groupId) setGroupId(d.groupId);
         setHasWon(d.prizedInCycle === true);
       }
-    }, (err) => console.error('[useAuction] user doc error:', err));
+      setUserDocLoaded(true);  // mark that we've read the user doc (even if no groupId)
+    }, (err) => {
+      console.error('[useAuction] user doc error:', err);
+      setUserDocLoaded(true);  // don't block forever on error
+    });
     return () => unsub();
   }, [uid]);
 
   // ── Effect 1: auctions onSnapshot ─────────────────────────────
-  // IMPORTANT: We query by status only (single-field auto-index = no setup needed).
-  // Filtering by groupId happens in JS after the snapshot arrives.
-  // This avoids the composite index that Firestore requires for
-  // where(groupId).where(status in [...]) — that index doesn't exist by default
-  // and causes a silent error that makes auction appear as null.
+  // Wait until we've read the user doc so groupId is resolved.
+  // If the user has no groupId, show all active auctions (fallback).
   useEffect(() => {
-    if (!uid) return;
+    if (!uid || !userDocLoaded) return;
 
     const q = query(
       collection(db, 'auctions'),
@@ -72,7 +75,8 @@ export default function useAuction() {
     const unsub = onSnapshot(q, (snap) => {
       const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-      // If we know the user's group, filter to it. Otherwise show all (fallback for demo).
+      // Only filter by groupId if the user actually has one set.
+      // If no groupId (e.g. new user or data missing), show any active auction.
       const mine = groupId ? all.filter((a) => a.groupId === groupId) : all;
 
       // Priority: open > scheduled
@@ -88,7 +92,7 @@ export default function useAuction() {
     });
 
     return () => unsub();
-  }, [uid, groupId]); // re-runs when groupId resolves from users/{uid}
+  }, [uid, userDocLoaded, groupId]); // re-runs when groupId resolves from users/{uid}
 
   // ── Effect 2: bids onSnapshot (only when open) ─────────────────
   useEffect(() => {
