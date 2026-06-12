@@ -11,7 +11,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  collection, query, where, onSnapshot, orderBy,
+  collection, query, where, onSnapshot,
   doc, getDoc, updateDoc, addDoc, serverTimestamp, getCountFromServer,
 } from 'firebase/firestore';
 import {
@@ -177,16 +177,25 @@ export default function LoanInbox() {
   const [pendingId,  setPendingId]  = useState(null);
   const [toast,      setToast]      = useState(null);
 
-  // ── Firestore onSnapshot ──────────────────────────────────────
+  // ── Firestore onSnapshot — fetches ALL loan_applications ─────────────────
   useEffect(() => {
+    // NOTE: no orderBy here — compound (where + orderBy) requires a composite
+    // Firestore index. We sort client-side instead to avoid index errors.
     const q = query(
       collection(db, 'loan_applications'),
-      where('status', '==', 'Pending'),
-      orderBy('submittedAt', 'desc')
+      where('status', '==', 'Pending')
     );
 
     const unsub = onSnapshot(q, async (snap) => {
-      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // Sort newest-first client-side
+      const docs = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = a.submittedAt?.toDate?.() ?? new Date(a.submittedAt ?? 0);
+          const tb = b.submittedAt?.toDate?.() ?? new Date(b.submittedAt ?? 0);
+          return tb - ta;
+        });
+
       setLoans(docs);
       setDataLoading(false);
 
@@ -201,17 +210,26 @@ export default function LoanInbox() {
       }));
       setUserTypes(freshTypes);
 
-      // ── Live stat aggregation ─────────────────────────────
+      // ── Stat aggregation — single-field where only (no index needed) ────
       try {
-        const [activeSnap, disbursedSnap, rejectedSnap] = await Promise.all([
+        const [activeSnap, disbursedSnap] = await Promise.all([
           getCountFromServer(query(collection(db, 'loan_applications'), where('status', '==', 'Pending'))),
           getCountFromServer(query(collection(db, 'loan_applications'), where('status', '==', 'Approved'))),
-          getCountFromServer(query(collection(db, 'loan_applications'), where('status', '==', 'Rejected'), where('reviewedAt', '>=', sevenDaysAgo()))),
         ]);
+
+        // Compute rejected-this-week from docs already in memory to avoid
+        // the compound index requirement on (status + reviewedAt)
+        const cutoff = sevenDaysAgo();
+        const rejectedWeekCount = docs.filter((d) => {
+          if (d.status !== 'Rejected') return false;
+          const ra = d.reviewedAt?.toDate?.() ?? (d.reviewedAt ? new Date(d.reviewedAt) : null);
+          return ra && ra >= cutoff;
+        }).length;
+
         setStats({
           active:       activeSnap.data().count,
           disbursed:    disbursedSnap.data().count,
-          rejectedWeek: rejectedSnap.data().count,
+          rejectedWeek: rejectedWeekCount,
         });
       } catch (e) {
         console.warn('[LoanInbox] stat count failed:', e.message);
