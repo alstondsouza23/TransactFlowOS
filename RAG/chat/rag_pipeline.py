@@ -21,9 +21,8 @@ from sync.pinecone_store import query_vectors
 log = logging.getLogger("rag.chat")
 
 _GEN_MODEL_ID = GENERATION_MODEL.replace("models/", "") if GENERATION_MODEL.startswith("models/") else GENERATION_MODEL
-_GEN_URL_V1  = f"https://generativelanguage.googleapis.com/v1/models/{_GEN_MODEL_ID}:streamGenerateContent?alt=sse"
-_GEN_URL_V1B = f"https://generativelanguage.googleapis.com/v1beta/models/{_GEN_MODEL_ID}:streamGenerateContent?alt=sse"
-_HEADERS     = {"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"}
+_GEN_URL      = f"https://generativelanguage.googleapis.com/v1beta/models/{_GEN_MODEL_ID}:streamGenerateContent?alt=sse"
+_HEADERS      = {"x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json"}
 
 # ── System prompts ────────────────────────────────────────────────
 
@@ -73,26 +72,30 @@ def _build_filter(uid: str, group_id: str | None, is_staff: bool) -> dict | None
 
 # ── Generation via streaming REST API ────────────────────────────
 
+
 async def _stream_generate(prompt: str, system: str):
     """
-    Async generator that yields text tokens from Gemini 1.5 Flash via SSE.
-    Tries v1 first, then v1beta.
+    Yields text tokens from Gemini via SSE (v1beta).
+    Retries up to 3× on 429 with exponential backoff.
     """
     payload = {
         "system_instruction": {"parts": [{"text": system}]},
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.25,
-            "maxOutputTokens": 1024,
-        },
+        "generationConfig": {"temperature": 0.25, "maxOutputTokens": 1024},
     }
 
-    for url in [_GEN_URL_V1, _GEN_URL_V1B]:
+    for attempt, wait in enumerate([0, 5, 15, 30]):
+        if wait:
+            log.warning(f"[rag] 429 on generation — waiting {wait}s (attempt {attempt})")
+            await asyncio.sleep(wait)
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream("POST", url, json=payload, headers=_HEADERS) as resp:
-                    if resp.status_code == 404:
-                        continue  # try next URL
+            async with httpx.AsyncClient(timeout=90.0) as client:
+                async with client.stream("POST", _GEN_URL, json=payload, headers=_HEADERS) as resp:
+                    if resp.status_code == 429:
+                        retry_after = int(resp.headers.get("retry-after", wait or 5))
+                        await resp.aread()
+                        await asyncio.sleep(retry_after)
+                        continue
                     resp.raise_for_status()
                     async for line in resp.aiter_lines():
                         if not line.startswith("data:"):
@@ -101,19 +104,24 @@ async def _stream_generate(prompt: str, system: str):
                         if not raw or raw == "[DONE]":
                             continue
                         try:
-                            chunk = json.loads(raw)
-                            for cand in chunk.get("candidates", []):
+                            for cand in json.loads(raw).get("candidates", []):
                                 for part in cand.get("content", {}).get("parts", []):
-                                    text = part.get("text", "")
-                                    if text:
-                                        yield text
+                                    txt = part.get("text", "")
+                                    if txt:
+                                        yield txt
                         except json.JSONDecodeError:
                             continue
-            return  # success — done
+            return  # success
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429 and attempt < 3:
+                continue
+            log.error(f"[rag] HTTP error: {e}")
+            yield "\n\n⚠️ Generation failed. Please wait a moment and try again."
+            return
         except Exception as e:
-            log.error(f"[rag] Generation stream error ({url}): {e}")
-            if url == _GEN_URL_V1B:
-                yield f"\n\n⚠️ Generation failed: {e}"
+            log.error(f"[rag] Stream error: {e}")
+            yield f"\n\n⚠️ Error: {e}"
+            return
 
 
 # ── Main RAG pipeline ─────────────────────────────────────────────

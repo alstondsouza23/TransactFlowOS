@@ -74,14 +74,16 @@ db = fa_firestore.client()
 # ── Initial bulk sync ─────────────────────────────────────────────
 async def _bulk_sync():
     """
-    On startup, read every document in every collection and upsert
-    to Pinecone. Idempotent — safe to run on every restart.
+    On startup, read every document in every collection and upsert to Pinecone.
+    Idempotent — safe to run on every restart.
+    Throttled to ~50 requests/min to stay within free-tier limits.
     """
     from sync.doc_processor import process_document
     from sync.embedder import embed_text
     from sync.pinecone_store import upsert_vector
+    import httpx
 
-    log.info("━━━ Initial Firestore → Pinecone sync ━━━")
+    log.info("━━━ Initial Firestore → Pinecone sync (background) ━━━")
     loop  = asyncio.get_event_loop()
     total = 0
 
@@ -95,11 +97,28 @@ async def _bulk_sync():
                 data  = doc.to_dict() or {}
                 chunk = process_document(col, doc.id, data)
                 if chunk:
-                    emb = await embed_text(chunk["text"])
-                    upsert_vector(chunk["id"], emb, chunk["metadata"], chunk["text"])
-                    synced += 1
-                    total  += 1
-                await asyncio.sleep(0)   # yield to event loop
+                    try:
+                        emb = await embed_text(chunk["text"])
+                        upsert_vector(chunk["id"], emb, chunk["metadata"], chunk["text"])
+                        synced += 1
+                        total  += 1
+                        await asyncio.sleep(1.2)   # ~50 RPM — free tier limit
+                    except httpx.HTTPStatusError as e:
+                        if e.response.status_code == 429:
+                            log.warning(f"  ⏸ Rate limited during sync — pausing 30s")
+                            await asyncio.sleep(30)
+                            # retry once
+                            try:
+                                emb = await embed_text(chunk["text"])
+                                upsert_vector(chunk["id"], emb, chunk["metadata"], chunk["text"])
+                                synced += 1
+                                total  += 1
+                            except Exception as retry_e:
+                                log.error(f"  ✖ Retry failed {col}/{doc.id}: {retry_e}")
+                        else:
+                            log.error(f"  ✖ Embed error {col}/{doc.id}: {e}")
+                    except Exception as e:
+                        log.error(f"  ✖ Sync error {col}/{doc.id}: {e}")
             log.info(f"  ✅ {col}: {synced}/{len(docs)} docs synced")
         except Exception as e:
             log.error(f"  ✖ {col}: {e}")
@@ -213,21 +232,24 @@ async def _handler(ws) -> None:
 async def main() -> None:
     loop = asyncio.get_event_loop()
 
-    # 1. Sync all existing Firestore data
-    await _bulk_sync()
+    # 1. Start WebSocket server FIRST so chats work immediately
+    log.info(f"🚀 RAG Chat server  →  ws://{WS_HOST}:{WS_PORT}")
 
     # 2. Start real-time Firestore listeners
     unsubs = setup_sync_listeners(db, loop)
     log.info(f"✅ Real-time sync active — {len(unsubs)} collections")
 
-    # 3. Start WebSocket server
-    log.info(f"🚀 RAG Chat server  →  ws://{WS_HOST}:{WS_PORT}")
+    # 3. Run bulk sync in the background (doesn't block chat)
+    async def _bg_sync():
+        await asyncio.sleep(2)   # small delay so server is fully up first
+        await _bulk_sync()
 
     async with websockets.serve(_handler, WS_HOST, WS_PORT):
+        bg = asyncio.create_task(_bg_sync())
         try:
             await asyncio.Future()   # run forever
         except (KeyboardInterrupt, asyncio.CancelledError):
-            pass
+            bg.cancel()
         finally:
             log.info("🛑 Shutting down — unsubscribing Firestore listeners…")
             for unsub in unsubs:

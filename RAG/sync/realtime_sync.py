@@ -50,11 +50,23 @@ async def _upsert(collection: str, doc_id: str, data: dict) -> None:
     from sync.doc_processor import process_document
     from sync.embedder import embed_text
     from sync.pinecone_store import upsert_vector
+    import httpx
     try:
         chunk = process_document(collection, doc_id, data)
         if chunk is None:
             return
-        emb = await embed_text(chunk["text"])
+        # Retry embedding up to 3× on 429
+        for attempt, wait in enumerate([0, 15, 45]):
+            if wait:
+                log.warning(f"  ⏸ Rate limited (embed) — waiting {wait}s")
+                await asyncio.sleep(wait)
+            try:
+                emb = await embed_text(chunk["text"])
+                break
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429 and attempt < 2:
+                    continue
+                raise
         upsert_vector(chunk["id"], emb, chunk["metadata"], chunk["text"])
         log.info(f"  ↑ Synced {collection}/{doc_id}")
     except Exception as e:
