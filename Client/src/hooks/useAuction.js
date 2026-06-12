@@ -43,8 +43,6 @@ export default function useAuction() {
   const timerRef = useRef(null);
 
   // ── Effect 3: users/{uid} → groupId + hasWon ──────────────────
-  const [userDocLoaded, setUserDocLoaded] = useState(false);
-
   useEffect(() => {
     if (!uid) return;
     const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
@@ -53,36 +51,47 @@ export default function useAuction() {
         if (d.groupId) setGroupId(d.groupId);
         setHasWon(d.prizedInCycle === true);
       }
-      setUserDocLoaded(true);  // mark that we've read the user doc (even if no groupId)
-    }, (err) => {
-      console.error('[useAuction] user doc error:', err);
-      setUserDocLoaded(true);  // don't block forever on error
-    });
+    }, (err) => console.error('[useAuction] user doc error:', err));
     return () => unsub();
   }, [uid]);
 
   // ── Effect 1: auctions onSnapshot ─────────────────────────────
-  // Wait until we've read the user doc so groupId is resolved.
-  // If the user has no groupId, show all active auctions (fallback).
+  // Query all auction statuses so we can show result screens for
+  // recently closed/cancelled auctions. Filter by groupId in JS.
   useEffect(() => {
-    if (!uid || !userDocLoaded) return;
+    if (!uid) return;
 
+    // Fetch ALL auctions for this group (no status filter) — we pick
+    // the most relevant one in JS. Firestore will use the auto-index on groupId.
+    // Fallback: if no groupId yet, show any non-closed active auction.
     const q = query(
       collection(db, 'auctions'),
-      where('status', 'in', ['scheduled', 'open'])
+      where('status', 'in', ['scheduled', 'open', 'closed', 'cancelled'])
     );
 
     const unsub = onSnapshot(q, (snap) => {
       const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-      // Only filter by groupId if the user actually has one set.
-      // If no groupId (e.g. new user or data missing), show any active auction.
+      // Filter to this user's group if we know it; otherwise show all.
       const mine = groupId ? all.filter((a) => a.groupId === groupId) : all;
 
-      // Priority: open > scheduled
+      if (mine.length === 0) {
+        setAuction(null);
+        return;
+      }
+
+      // Priority: open > scheduled > most-recently-closed/cancelled
       const active =
         mine.find((a) => a.status === 'open') ||
         mine.find((a) => a.status === 'scheduled') ||
+        // Pick the most recently closed/cancelled (latest closedAt)
+        mine
+          .filter((a) => a.status === 'closed' || a.status === 'cancelled')
+          .sort((a, b) => {
+            const ta = a.closedAt?.toDate?.()?.getTime() ?? new Date(a.closedAt ?? 0).getTime();
+            const tb = b.closedAt?.toDate?.()?.getTime() ?? new Date(b.closedAt ?? 0).getTime();
+            return tb - ta;
+          })[0] ||
         null;
 
       setAuction(active);
@@ -92,7 +101,7 @@ export default function useAuction() {
     });
 
     return () => unsub();
-  }, [uid, userDocLoaded, groupId]); // re-runs when groupId resolves from users/{uid}
+  }, [uid, groupId]); // re-runs when groupId resolves from users/{uid}
 
   // ── Effect 2: bids onSnapshot (only when open) ─────────────────
   useEffect(() => {
