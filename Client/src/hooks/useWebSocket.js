@@ -37,6 +37,15 @@ export function useWebSocket() {
       return;
     }
 
+    if (channel === 'loan_inbox') {
+      if (event === 'create_loan_ack') {
+        console.log('[WS Client] Loan created:', payload);
+      } else if (event === 'create_loan_error') {
+        console.warn('[WS Client] Loan error:', payload?.error);
+      }
+      return;
+    }
+
     if (channel === 'system') return;   // auth ack, pong — ignore
     if (channel === 'error') {
       console.error('[WS Client] Server error:', payload);

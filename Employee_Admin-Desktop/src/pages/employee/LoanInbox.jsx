@@ -181,7 +181,6 @@ export default function LoanInbox() {
     const q = query(
       collection(db, 'loan_applications'),
       where('status', '==', 'Pending'),
-      where('groupId', '==', 'GRP-001'),
       orderBy('submittedAt', 'desc')
     );
 
