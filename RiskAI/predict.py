@@ -15,6 +15,10 @@ import os, sys, json, argparse
 from datetime import datetime, timezone, date
 from collections import defaultdict
 
+# Force UTF-8 output on Windows (avoids cp1252 UnicodeEncodeError)
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 import numpy as np
 import joblib
 from dotenv import load_dotenv

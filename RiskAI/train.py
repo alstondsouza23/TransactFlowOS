@@ -148,7 +148,7 @@ def main():
     with open("models/model_meta.json", "w") as f:
         json.dump(meta, f, indent=2)
     print("model_meta.json saved.")
-    print("\n✅ Training complete. Run `python predict.py` to generate risk_analysis_output.json")
+    print("\n[OK] Training complete. Run `python predict.py` to generate risk_analysis_output.json")
 
 if __name__ == "__main__":
     main()
