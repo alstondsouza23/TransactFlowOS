@@ -79,14 +79,16 @@ function LoanApplicationCard({ doc }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { sendAction } = useWsAction();
 
-  const {
-    id,
-    applicant_name,
-    requested_amount_inr,
-    submitted_at,
-    status,
-    risk_score,
-  } = doc;
+  const id = doc.id;
+
+  // Support both camelCase (new submissions) and snake_case (legacy docs)
+  const applicantName  = doc.applicantName  ?? doc.applicant_name  ?? '—';
+  const amount         = doc.requestedAmountINR ?? doc.requested_amount_inr ?? null;
+  const submittedAt    = doc.submittedAt    ?? doc.submitted_at    ?? null;
+  const status         = doc.status ?? 'Pending';
+  const riskScore      = doc.riskScore      ?? doc.risk_score      ?? null;
+  const purpose        = doc.purpose        ?? '—';
+  const tenure         = doc.tenureMonths   ?? doc.tenure_months   ?? null;
 
   const handleFastTrack = (e) => {
     e.stopPropagation();
@@ -104,9 +106,9 @@ function LoanApplicationCard({ doc }) {
             <User size={20} />
           </div>
           <div>
-            <h4 className="font-bold text-slate-700 text-sm">{applicant_name}</h4>
+            <h4 className="font-bold text-slate-700 text-sm">{applicantName}</h4>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              {fmtRelative(submitted_at)}
+              {fmtRelative(submittedAt)}
             </span>
           </div>
         </div>
@@ -118,13 +120,25 @@ function LoanApplicationCard({ doc }) {
       <div className="flex items-end justify-between">
         <div>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Requested Amount</span>
-          <span className="text-lg font-black text-[#1a2f55]">₹ {fmtInr(requested_amount_inr)}</span>
+          <span className="text-lg font-black text-[#1a2f55]">₹ {amount != null ? fmtInr(amount) : '—'}</span>
         </div>
         <div className="text-right">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Risk Score</span>
-          <span className={`text-sm font-black ${riskColor(risk_score)}`}>{risk_score ?? '—'}</span>
+          <span className={`text-sm font-black ${riskColor(riskScore ?? 999)}`}>{riskScore ?? '—'}</span>
         </div>
       </div>
+
+      {/* Purpose + Tenure pill row */}
+      {(purpose !== '—' || tenure) && (
+        <div className="flex items-center gap-2 mt-3">
+          {purpose !== '—' && (
+            <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">{purpose}</span>
+          )}
+          {tenure && (
+            <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{tenure} mo</span>
+          )}
+        </div>
+      )}
 
       {isExpanded && status !== 'Verified' && status !== 'Rejected' && (
         <div className="mt-6 pt-5 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -219,17 +233,21 @@ export default function EmployeeDashboard() {
   const auditLog         = useWsStore((s) => s.auditLog);
   const recoveryCases    = useWsStore((s) => s.recoveryCases);
 
-  // ── Derived stat card values ──────────────────────────────────
+  // ── Derived stat card values — support both field-name conventions ──────────
   const activeApps   = loanApplications.filter((a) => a.status !== 'Rejected').length;
   const disbursed    = loanApplications
-    .filter((a) => a.status === 'Verified')
-    .reduce((sum, a) => sum + (a.requested_amount_inr || 0), 0);
-  const riskWarnings = loanApplications.filter((a) => (a.risk_score ?? 999) < 700).length;
+    .filter((a) => a.status === 'Verified' || a.status === 'Approved')
+    .reduce((sum, a) => sum + (a.requestedAmountINR ?? a.requested_amount_inr ?? 0), 0);
+  const riskWarnings = loanApplications.filter((a) => {
+    const score = a.riskScore ?? a.risk_score ?? 999;
+    return score < 700;
+  }).length;
 
   // ── Filtered loan list ────────────────────────────────────────
-  const filteredLoans = loanApplications.filter((a) =>
-    !search || a.applicant_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredLoans = loanApplications.filter((a) => {
+    const name = a.applicantName ?? a.applicant_name ?? '';
+    return !search || name.toLowerCase().includes(search.toLowerCase());
+  });
 
   // ── Activity feed (20 newest) ─────────────────────────────────
   const activityFeed = auditLog.slice(0, 20);
