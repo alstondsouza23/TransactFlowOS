@@ -25,6 +25,7 @@ import Sidebar        from '../../components/Sidebar';
 import KernelMonitor  from '../../components/KernelMonitor';
 import useAuthStore   from '../../store/authStore';
 import { useWsAction } from '../../providers/WebSocketProvider';
+import { fmtName } from '../../lib/fmtName';
 
 // ─────────────────────────────────────────────────────────────────
 // Helpers
@@ -177,6 +178,7 @@ export default function KYCApprovals() {
     const matchFilter = filter === 'All Statuses' || d.status === filter;
     const q = search.toLowerCase();
     const matchSearch = !search ||
+      fmtName(d.name).toLowerCase().includes(q) ||
       d.name?.toLowerCase().includes(q) ||
       d.panMasked?.toLowerCase().includes(q) ||
       d.phone?.includes(search);
@@ -445,7 +447,7 @@ export default function KYCApprovals() {
                       <tr key={req.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="p-4">
                           <div className="flex flex-col">
-                            <span className="text-sm font-bold text-slate-700">{req.name}</span>
+                            <span className="text-sm font-bold text-slate-700">{fmtName(req.name)}</span>
                             <span className="text-[11px] font-medium text-slate-400">{req.phone || '—'}</span>
                             <span className="text-[10px] text-slate-300 mt-0.5 font-mono">{req.id.slice(0, 8)}…</span>
                           </div>

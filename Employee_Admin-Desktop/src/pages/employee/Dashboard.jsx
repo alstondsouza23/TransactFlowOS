@@ -27,6 +27,7 @@ import KernelMonitor from '../../components/KernelMonitor';
 import useAuthStore from '../../store/authStore';
 import useWsStore from '../../store/wsStore';
 import { useWsAction } from '../../providers/WebSocketProvider';
+import { fmtName, fmtInitials } from '../../lib/fmtName';
 
 // ─────────────────────────────────────────────────────────────────
 // Utilities
@@ -82,7 +83,7 @@ function LoanApplicationCard({ doc }) {
   const id = doc.id;
 
   // Support both camelCase (new submissions) and snake_case (legacy docs)
-  const applicantName  = doc.applicantName  ?? doc.applicant_name  ?? '—';
+  const applicantName  = fmtName(doc.applicantName  ?? doc.applicant_name);
   const amount         = doc.requestedAmountINR ?? doc.requested_amount_inr ?? null;
   const submittedAt    = doc.submittedAt    ?? doc.submitted_at    ?? null;
   const status         = doc.status ?? 'Pending';
@@ -245,7 +246,7 @@ export default function EmployeeDashboard() {
 
   // ── Filtered loan list ────────────────────────────────────────
   const filteredLoans = loanApplications.filter((a) => {
-    const name = a.applicantName ?? a.applicant_name ?? '';
+    const name = fmtName(a.applicantName ?? a.applicant_name);
     return !search || name.toLowerCase().includes(search.toLowerCase());
   });
 

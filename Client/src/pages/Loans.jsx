@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import useAuthStore   from '../store/authStore';
 import useLoanDocs    from '../hooks/useLoanDocs';
 import { useWsAction } from '../providers/WebSocketProvider';
+import { fmtName } from '../lib/fmtName';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Icons = {
@@ -103,7 +104,7 @@ function LoanForm({ user, financialData, onSubmitSuccess, onAmountChange, onTenu
         purpose,
         tenureMonths:  months,
         groupId:       financialData?.profile?.group_id ?? 'GRP-001',
-        applicantName: user?.displayName || user?.email?.split('@')[0] || 'Member',
+        applicantName: fmtName(user?.displayName || user?.email?.split('@')[0] || 'Member'),
       },
     });
 

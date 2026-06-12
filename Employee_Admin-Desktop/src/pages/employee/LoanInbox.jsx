@@ -26,6 +26,7 @@ import Sidebar         from '../../components/Sidebar';
 import KernelMonitor   from '../../components/KernelMonitor';
 import useAuthStore    from '../../store/authStore';
 import { useWsAction } from '../../providers/WebSocketProvider';
+import { fmtName, fmtInitials } from '../../lib/fmtName';
 
 // ─────────────────────────────────────────────────────────────────
 // EMI calculator — standard reducing balance formula
@@ -419,10 +420,10 @@ export default function LoanInbox() {
                       {/* Left — Applicant */}
                       <div className="flex items-start gap-4 flex-1 min-w-[200px]">
                         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-black text-[#1a2f55] flex-shrink-0">
-                          {loan.applicantName?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() ?? 'NA'}
+                          {fmtInitials(loan.applicantName)}
                         </div>
                         <div>
-                          <p className="text-sm font-black text-slate-800">{loan.applicantName ?? '—'}</p>
+                          <p className="text-sm font-black text-slate-800">{fmtName(loan.applicantName)}</p>
                           <p className="text-xs text-slate-400 font-medium mt-0.5">{loan.purpose ?? '—'}</p>
                           <div className="flex items-center gap-2 mt-2">
                             <StatusBadge status={loan.status} />
