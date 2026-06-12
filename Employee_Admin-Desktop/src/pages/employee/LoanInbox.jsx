@@ -11,8 +11,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  collection, query, where, onSnapshot,
-  doc, getDoc, updateDoc, addDoc, serverTimestamp, getCountFromServer,
+  collection, onSnapshot,
+  doc, getDoc, updateDoc, addDoc, serverTimestamp,
 } from 'firebase/firestore';
 import {
   Bell, Search, ChevronLeft, ChevronRight,
@@ -172,6 +172,7 @@ export default function LoanInbox() {
 
   // ── UI state ──────────────────────────────────────────────────
   const [search,     setSearch]     = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [page,       setPage]       = useState(0);
   const [rejectItem, setRejectItem] = useState(null); // { id, applicantName }
   const [pendingId,  setPendingId]  = useState(null);
@@ -179,12 +180,9 @@ export default function LoanInbox() {
 
   // ── Firestore onSnapshot — fetches ALL loan_applications ─────────────────
   useEffect(() => {
-    // NOTE: no orderBy here — compound (where + orderBy) requires a composite
-    // Firestore index. We sort client-side instead to avoid index errors.
-    const q = query(
-      collection(db, 'loan_applications'),
-      where('status', '==', 'Pending')
-    );
+    // No where() or orderBy() — fetch everything, filter/sort client-side
+    // to avoid Firestore composite index requirements
+    const q = collection(db, 'loan_applications');
 
     const unsub = onSnapshot(q, async (snap) => {
       // Sort newest-first client-side
@@ -199,8 +197,24 @@ export default function LoanInbox() {
       setLoans(docs);
       setDataLoading(false);
 
-      // Cross-reference userType for eligibility gate
-      const uids = [...new Set(docs.map((d) => d.applicantUid).filter(Boolean))];
+      // ── Stats from in-memory docs (no extra Firestore queries needed) ──
+      const cutoff = sevenDaysAgo();
+      setStats({
+        active:       docs.filter((d) => d.status === 'Pending').length,
+        disbursed:    docs.filter((d) => d.status === 'Approved').length,
+        rejectedWeek: docs.filter((d) => {
+          if (d.status !== 'Rejected') return false;
+          const ra = d.reviewedAt?.toDate?.() ?? (d.reviewedAt ? new Date(d.reviewedAt) : null);
+          return ra && ra >= cutoff;
+        }).length,
+      });
+
+      // Cross-reference userType for eligibility gate (Pending only)
+      const uids = [...new Set(
+        docs.filter((d) => d.status === 'Pending')
+            .map((d) => d.applicantUid)
+            .filter(Boolean)
+      )];
       const freshTypes = {};
       await Promise.all(uids.map(async (uid) => {
         try {
@@ -209,31 +223,6 @@ export default function LoanInbox() {
         } catch { freshTypes[uid] = 'unknown'; }
       }));
       setUserTypes(freshTypes);
-
-      // ── Stat aggregation — single-field where only (no index needed) ────
-      try {
-        const [activeSnap, disbursedSnap] = await Promise.all([
-          getCountFromServer(query(collection(db, 'loan_applications'), where('status', '==', 'Pending'))),
-          getCountFromServer(query(collection(db, 'loan_applications'), where('status', '==', 'Approved'))),
-        ]);
-
-        // Compute rejected-this-week from docs already in memory to avoid
-        // the compound index requirement on (status + reviewedAt)
-        const cutoff = sevenDaysAgo();
-        const rejectedWeekCount = docs.filter((d) => {
-          if (d.status !== 'Rejected') return false;
-          const ra = d.reviewedAt?.toDate?.() ?? (d.reviewedAt ? new Date(d.reviewedAt) : null);
-          return ra && ra >= cutoff;
-        }).length;
-
-        setStats({
-          active:       activeSnap.data().count,
-          disbursed:    disbursedSnap.data().count,
-          rejectedWeek: rejectedWeekCount,
-        });
-      } catch (e) {
-        console.warn('[LoanInbox] stat count failed:', e.message);
-      }
     }, (err) => {
       console.error('[LoanInbox] snapshot error:', err);
       setDataLoading(false);
@@ -354,13 +343,22 @@ export default function LoanInbox() {
 
   // ── Filter + paginate ─────────────────────────────────────────
   const filtered = loans.filter((l) => {
+    const matchStatus = statusFilter === 'All' || l.status === statusFilter;
     const q = search.toLowerCase();
-    return !search ||
-      l.applicantName?.toLowerCase().includes(q) ||
+    const matchSearch = !search ||
+      fmtName(l.applicantName ?? l.applicant_name).toLowerCase().includes(q) ||
       l.purpose?.toLowerCase().includes(q);
+    return matchStatus && matchSearch;
   });
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const STATUS_TABS = [
+    { key: 'All',      label: 'All',      count: loans.length },
+    { key: 'Pending',  label: 'Pending',  count: loans.filter((l) => l.status === 'Pending').length },
+    { key: 'Approved', label: 'Approved', count: loans.filter((l) => l.status === 'Approved').length },
+    { key: 'Rejected', label: 'Rejected', count: loans.filter((l) => l.status === 'Rejected').length },
+  ];
 
   return (
     <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter">
@@ -407,6 +405,31 @@ export default function LoanInbox() {
               <MetricCard title="Rejected This Week"  value={stats.rejectedWeek} trend="Last 7 days"     isPositive={stats.rejectedWeek === 0} loading={dataLoading} />
             </section>
 
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {STATUS_TABS.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => { setStatusFilter(tab.key); setPage(0); }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                    statusFilter === tab.key
+                      ? 'bg-[#1a2f55] text-white shadow-md'
+                      : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  {tab.label}
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                    statusFilter === tab.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+              <span className="ml-auto text-xs text-slate-400 font-medium">
+                {filtered.length} application{filtered.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
             {/* Loan Cards */}
             <section className="space-y-4">
               {dataLoading ? (
@@ -420,8 +443,10 @@ export default function LoanInbox() {
               ) : paginated.length === 0 ? (
                 <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-16 text-center">
                   <FileText size={40} className="text-slate-200 mx-auto mb-4" />
-                  <p className="text-slate-500 font-bold">No pending loan applications</p>
-                  <p className="text-slate-400 text-sm mt-1">All caught up! New applications will appear here automatically.</p>
+                  <p className="text-slate-500 font-bold">
+                    {statusFilter === 'All' ? 'No loan applications yet' : `No ${statusFilter.toLowerCase()} applications`}
+                  </p>
+                  <p className="text-slate-400 text-sm mt-1">New applications will appear here automatically.</p>
                 </div>
               ) : paginated.map((loan) => {
                 const amount    = loan.requestedAmountINR ?? loan.requested_amount_inr ?? 0;
