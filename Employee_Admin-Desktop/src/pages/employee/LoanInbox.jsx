@@ -242,9 +242,10 @@ export default function LoanInbox() {
     const actorUid  = user?.uid ?? 'unknown';
     const actorName = user?.displayName || user?.email || 'Employee';
     const appId     = loan.id;
-    const uid       = loan.applicantUid;
+    const uid       = loan.applicantUid  ?? loan.applicant_uid  ?? '';
+    const loanName  = fmtName(loan.applicantName ?? loan.applicant_name);
     const amount    = loan.requestedAmountINR ?? loan.requested_amount_inr ?? 0;
-    const tenure    = loan.tenureMonths ?? 12;
+    const tenure    = loan.tenureMonths   ?? loan.tenure_months   ?? 12;
 
     setPendingId(appId);
     try {
@@ -273,15 +274,15 @@ export default function LoanInbox() {
         actor_name:  actorName,
         actor_uid:   actorUid,
         targetUid:   uid,
-        targetName:  loan.applicantName,
+        targetName:  loanName,
         entity_type: 'LOAN_APP',
         entity_id:   appId,
         amount_inr:  amount,
-        details:     `Loan of ${fmtInr(amount)} approved by ${actorName} for ${loan.applicantName}`,
+        details:     `Loan of ${fmtInr(amount)} approved by ${actorName} for ${loanName}`,
         timestamp:   serverTimestamp(),
       });
 
-      showToast(`Loan approved for ${loan.applicantName} — ₹${Number(amount).toLocaleString('en-IN')}`);
+      showToast(`Loan approved for ${loanName} — ₹${Number(amount).toLocaleString('en-IN')}`);
     } catch (err) {
       console.error('[Loan approve]', err);
       showToast(`Error: ${err.message}`, 'error');
@@ -449,12 +450,17 @@ export default function LoanInbox() {
                   <p className="text-slate-400 text-sm mt-1">New applications will appear here automatically.</p>
                 </div>
               ) : paginated.map((loan) => {
-                const amount    = loan.requestedAmountINR ?? loan.requested_amount_inr ?? 0;
-                const userType  = userTypes[loan.applicantUid] ?? 'unknown';
-                const eligible  = userType === 'loan_eligible';
-                const isPending = pendingId === loan.id;
-                const tenure    = loan.tenureMonths ?? 12;
-                const emiAmt    = Math.round(calcEMI(amount, 12, tenure));
+                // ── Resolve both camelCase (new) and snake_case (legacy) fields ──
+                const name       = fmtName(loan.applicantName ?? loan.applicant_name);
+                const amount     = loan.requestedAmountINR   ?? loan.requested_amount_inr ?? 0;
+                const applicantUid = loan.applicantUid       ?? loan.applicant_uid        ?? '';
+                const riskScore  = loan.riskScore            ?? loan.risk_score           ?? null;
+                const tenure     = loan.tenureMonths         ?? loan.tenure_months        ?? 12;
+                const purpose    = loan.purpose              ?? '—';
+                const userType   = userTypes[applicantUid]   ?? 'unknown';
+                const eligible   = userType === 'loan_eligible';
+                const isPending  = pendingId === loan.id;
+                const emiAmt     = Math.round(calcEMI(amount, 12, tenure));
 
                 return (
                   <div key={loan.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-6 hover:shadow-md transition-all">
@@ -463,11 +469,11 @@ export default function LoanInbox() {
                       {/* Left — Applicant */}
                       <div className="flex items-start gap-4 flex-1 min-w-[200px]">
                         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-black text-[#1a2f55] flex-shrink-0">
-                          {fmtInitials(loan.applicantName)}
+                          {fmtInitials(loan.applicantName ?? loan.applicant_name)}
                         </div>
                         <div>
-                          <p className="text-sm font-black text-slate-800">{fmtName(loan.applicantName)}</p>
-                          <p className="text-xs text-slate-400 font-medium mt-0.5">{loan.purpose ?? '—'}</p>
+                          <p className="text-sm font-black text-slate-800">{name}</p>
+                          <p className="text-xs text-slate-400 font-medium mt-0.5">{purpose}</p>
                           <div className="flex items-center gap-2 mt-2">
                             <StatusBadge status={loan.status} />
                             {!eligible && <EligibilityBadge userType={userType} />}
@@ -497,11 +503,11 @@ export default function LoanInbox() {
                           <Calendar size={12} />
                           {fmtDate(loan.submittedAt)}
                         </div>
-                        {loan.riskScore != null && (
+                        {riskScore != null && (
                           <div className="flex items-center gap-1.5 text-[11px] font-bold"
-                            style={{ color: loan.riskScore < 40 ? '#10b981' : loan.riskScore < 70 ? '#f59e0b' : '#ef4444' }}>
+                            style={{ color: riskScore < 40 ? '#10b981' : riskScore < 70 ? '#f59e0b' : '#ef4444' }}>
                             <ShieldCheck size={12} />
-                            Risk score: {loan.riskScore}
+                            Risk score: {riskScore}
                           </div>
                         )}
 
@@ -516,7 +522,7 @@ export default function LoanInbox() {
                               <CheckCircle2 size={14} /> Approve
                             </button>
                             <button
-                              onClick={() => setRejectItem({ id: loan.id, applicantName: loan.applicantName, applicantUid: loan.applicantUid })}
+                              onClick={() => setRejectItem({ id: loan.id, applicantName: name, applicantUid: applicantUid })}
                               className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold hover:bg-rose-100 transition-all"
                             >
                               <XCircle size={14} /> Reject
