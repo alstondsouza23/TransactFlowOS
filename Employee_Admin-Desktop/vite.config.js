@@ -9,7 +9,7 @@ export default defineConfig({
     react()
   ],
   server: {
-    port: 5174,
+    port: 1573,
     strictPort: true
   }
 })

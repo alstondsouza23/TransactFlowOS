@@ -18,7 +18,9 @@ from datetime import datetime, timezone
 
 from firebase_admin import firestore as fa_firestore
 
-db  = fa_firestore.client()
+def _db():
+    from firebase_admin import firestore as fa_firestore
+    return fa_firestore.client()
 log = logging.getLogger("transactflow-ws.auction")
 
 # ── Member-number cache: (uid, group_id) → 1-based int ───────────────────────
@@ -64,7 +66,7 @@ async def get_member_number(uid: str, group_id: str) -> int:
 
     members = await _exe(
         lambda: list(
-            db.collection("users")
+            _db().collection("users")
               .where("groupId", "==", group_id)
               .order_by("createdAt")
               .stream()
@@ -123,7 +125,7 @@ async def handle_create_auction(ws, payload: dict, uid: str, display_name: str,
         sched_dt = datetime.now(timezone.utc)
 
     # Create Firestore document
-    doc_ref = db.collection("auctions").document()
+    doc_ref = _db().collection("auctions").document()
     auction_doc = {
         "groupId":         group_id,
         "cycleNumber":     cycle_number,
@@ -168,7 +170,7 @@ async def handle_open_auction(ws, payload: dict, uid: str, display_name: str,
         await send_fn(ws, "auction_room", "open_error", {"message": "auctionId required"})
         return
 
-    auction_doc = await _exe(lambda: db.collection("auctions").document(auction_id).get())
+    auction_doc = await _exe(lambda: _db().collection("auctions").document(auction_id).get())
     if not auction_doc.exists:
         await send_fn(ws, "auction_room", "open_error", {"message": "Auction not found"})
         return
@@ -178,13 +180,13 @@ async def handle_open_auction(ws, payload: dict, uid: str, display_name: str,
     duration_min = int(data.get("durationMinutes", 60))
     opened_at    = datetime.now(timezone.utc)
 
-    await _exe(lambda: db.collection("auctions").document(auction_id).update({
+    await _exe(lambda: _db().collection("auctions").document(auction_id).update({
         "status":   "open",
         "openedAt": fa_firestore.SERVER_TIMESTAMP,
     }))
     log.info(f"[auction] Opened {auction_id} ({duration_min} min)")
 
-    updated = await _exe(lambda: db.collection("auctions").document(auction_id).get())
+    updated = await _exe(lambda: _db().collection("auctions").document(auction_id).get())
     safe    = _serialise(updated)
     safe.setdefault("openedAt", opened_at.isoformat())
     await broadcast_to_group_fn(group_id, "auction_room", "auction_opened", safe)
@@ -201,7 +203,7 @@ async def _auction_countdown(auction_id: str, group_id: str, duration_min: int,
     """Sleep then auto-close if still open."""
     await asyncio.sleep(duration_min * 60)
     try:
-        a = await _exe(lambda: db.collection("auctions").document(auction_id).get())
+        a = await _exe(lambda: _db().collection("auctions").document(auction_id).get())
         if a.exists and a.to_dict().get("status") == "open":
             log.info(f"[auction] Countdown done — auto-closing {auction_id}")
             await handle_close_auction_internal(auction_id, group_id,
@@ -223,7 +225,7 @@ async def handle_place_bid(ws, payload: dict, uid: str, display_name: str,
     bid_amount     = int(payload.get("bidAmountINR", 0))
 
     # ── Validate: auction open ─────────────────────────────────────
-    a_doc = await _exe(lambda: db.collection("auctions").document(auction_id).get())
+    a_doc = await _exe(lambda: _db().collection("auctions").document(auction_id).get())
     if not a_doc.exists or a_doc.to_dict().get("status") != "open":
         await send_fn(ws, "auction_room", "bid_error", {"message": "Auction is not open for bidding"})
         return
@@ -234,7 +236,7 @@ async def handle_place_bid(ws, payload: dict, uid: str, display_name: str,
         return
 
     # ── Validate: not already prized ──────────────────────────────
-    u_doc = await _exe(lambda: db.collection("users").document(bidder_uid).get())
+    u_doc = await _exe(lambda: _db().collection("users").document(bidder_uid).get())
     if u_doc.exists and u_doc.to_dict().get("prizedInCycle") is True:
         await send_fn(ws, "auction_room", "bid_error",
                       {"message": "You have already won a cycle and cannot bid again"})
@@ -242,7 +244,7 @@ async def handle_place_bid(ws, payload: dict, uid: str, display_name: str,
 
     # ── Upsert bid ────────────────────────────────────────────────
     existing = await _exe(lambda: list(
-        db.collection("bids")
+        _db().collection("bids")
           .where("auctionId",  "==", auction_id)
           .where("bidderUid",  "==", bidder_uid)
           .stream()
@@ -251,13 +253,13 @@ async def handle_place_bid(ws, payload: dict, uid: str, display_name: str,
     now = datetime.now(timezone.utc)
     if existing:
         bid_id  = existing[0].id
-        await _exe(lambda: db.collection("bids").document(bid_id).update({
+        await _exe(lambda: _db().collection("bids").document(bid_id).update({
             "bidAmountINR":    bid_amount,
             "placedAt":        fa_firestore.SERVER_TIMESTAMP,
         }))
         log.info(f"[auction] Bid updated: uid={bidder_uid} amount=₹{bid_amount}")
     else:
-        await _exe(lambda: db.collection("bids").add({
+        await _exe(lambda: _db().collection("bids").add({
             "auctionId":       auction_id,
             "groupId":         group_id,
             "bidderUid":       bidder_uid,
@@ -282,7 +284,7 @@ async def handle_place_bid(ws, payload: dict, uid: str, display_name: str,
 
     # ── Recompute leader = HIGHEST bid ────────────────────────────
     top = await _exe(lambda: list(
-        db.collection("bids")
+        _db().collection("bids")
           .where("auctionId", "==", auction_id)
           .order_by("bidAmountINR", direction=fa_firestore.Query.DESCENDING)
           .limit(1)
@@ -327,7 +329,7 @@ async def handle_cancel_auction(ws, payload: dict, uid: str, display_name: str,
         await send_fn(ws, "auction_room", "cancel_error", {"message": "auctionId required"})
         return
 
-    await _exe(lambda: db.collection("auctions").document(auction_id).update({
+    await _exe(lambda: _db().collection("auctions").document(auction_id).update({
         "status":       "cancelled",
         "closedAt":     fa_firestore.SERVER_TIMESTAMP,
         "cancelReason": reason,
@@ -350,7 +352,7 @@ async def handle_close_auction_internal(auction_id: str, group_id: str,
     Query bids → pick winner (highest bid wins) →
     update all relevant documents → broadcast results.
     """
-    a_doc = await _exe(lambda: db.collection("auctions").document(auction_id).get())
+    a_doc = await _exe(lambda: _db().collection("auctions").document(auction_id).get())
     if not a_doc.exists:
         log.warning(f"[auction] close_internal: {auction_id} not found")
         return
@@ -360,7 +362,7 @@ async def handle_close_auction_internal(auction_id: str, group_id: str,
 
     # All bids ordered DESC — highest bid = winner
     all_bids = await _exe(lambda: list(
-        db.collection("bids")
+        _db().collection("bids")
           .where("auctionId", "==", auction_id)
           .order_by("bidAmountINR", direction=fa_firestore.Query.DESCENDING)
           .limit(1)
@@ -381,7 +383,7 @@ async def handle_close_auction_internal(auction_id: str, group_id: str,
     winning_bid_inr  = int(w.get("bidAmountINR", 0))
 
     # ── Update auction ─────────────────────────────────────────────
-    await _exe(lambda: db.collection("auctions").document(auction_id).update({
+    await _exe(lambda: _db().collection("auctions").document(auction_id).update({
         "status":        "closed",
         "closedAt":      fa_firestore.SERVER_TIMESTAMP,
         "winnerId":      winner_uid,
@@ -392,24 +394,24 @@ async def handle_close_auction_internal(auction_id: str, group_id: str,
     }))
 
     # ── Mark winning bid ──────────────────────────────────────────
-    await _exe(lambda: db.collection("bids").document(winner_bid_doc.id).update({
+    await _exe(lambda: _db().collection("bids").document(winner_bid_doc.id).update({
         "isWinning": True
     }))
 
     # ── Mark user as prized ───────────────────────────────────────
-    await _exe(lambda: db.collection("users").document(winner_uid).update({
+    await _exe(lambda: _db().collection("users").document(winner_uid).update({
         "prizedInCycle": True,
         "prizedAt":      fa_firestore.SERVER_TIMESTAMP,
     }))
 
     # ── Update group ───────────────────────────────────────────────
-    await _exe(lambda: db.collection("groups").document(group_id).set({
+    await _exe(lambda: _db().collection("groups").document(group_id).set({
         "prizedMembers": fa_firestore.ArrayUnion([winner_uid]),
         "currentCycle":  fa_firestore.Increment(1),
     }, merge=True))
 
     # ── Audit log ─────────────────────────────────────────────────
-    await _exe(lambda: db.collection("audit_log").add({
+    await _exe(lambda: _db().collection("audit_log").add({
         "action":        "AUCTION_CLOSED",
         "action_code":   "AUCTION_CLOSED",
         "entity_type":   "AUCTION",
