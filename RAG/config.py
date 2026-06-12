@@ -13,9 +13,10 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "transactflow-rag")
 # ── Google Gemini ─────────────────────────────────────────────────
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-# Embedding model that supports output_dimensionality=1024
-EMBEDDING_MODEL  = "models/gemini-embedding-exp-03-07"
-EMBEDDING_DIM    = 1024
+# Models
+# text-embedding-004 outputs 768 dims — available free on AI Studio
+EMBEDDING_MODEL  = "models/text-embedding-004"
+EMBEDDING_DIM    = 768
 GENERATION_MODEL = "gemini-1.5-flash"
 
 # ── Firebase Admin ────────────────────────────────────────────────

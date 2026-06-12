@@ -24,7 +24,6 @@ def _embed_sync(text: str, task_type: str) -> list[float]:
         contents=text,
         config=types.EmbedContentConfig(
             task_type=task_type,
-            output_dimensionality=EMBEDDING_DIM,
         ),
     )
     return list(response.embeddings[0].values)
