@@ -12,6 +12,7 @@ import LoanInbox         from './pages/employee/LoanInbox';
 import DefaultTracker    from './pages/employee/DefaultTracker';
 import AuctionManagement from './pages/employee/AuctionManagement';
 import RiskAnalysis      from './pages/shared/RiskAnalysis';
+import ChatWidget        from './components/ChatWidget';
 
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
     <Router>
       <AuthProvider>
         <WebSocketProvider>
+        <ChatWidget />
         <Routes>
           {/* Public */}
           <Route path="/" element={<Navigate to="/login" replace />} />

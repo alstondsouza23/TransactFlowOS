@@ -4,6 +4,7 @@ import AuthProvider from './providers/AuthProvider';
 import Layout       from './components/Layout';
 import useAuthStore  from './store/authStore';
 import Toast         from './components/Toast';
+import ChatWidget    from './components/ChatWidget';
 
 // ── Lazy Loaded Pages ──────────────────────────────────────────────
 const Login         = lazy(() => import('./pages/Login'));
@@ -80,6 +81,7 @@ function App() {
     <AuthProvider>
       <WebSocketProvider>
         <Toast />
+        <ChatWidget />
         <Router>
           <Routes>
             {/* Public */}
