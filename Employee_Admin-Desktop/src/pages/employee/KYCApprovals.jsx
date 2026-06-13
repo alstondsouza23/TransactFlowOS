@@ -26,6 +26,7 @@ import KernelMonitor  from '../../components/KernelMonitor';
 import useAuthStore   from '../../store/authStore';
 import { useWsAction } from '../../providers/WebSocketProvider';
 import { fmtName } from '../../lib/fmtName';
+import { exportCsv } from '../../lib/exportCsv';
 
 // ─────────────────────────────────────────────────────────────────
 // Helpers
@@ -324,6 +325,28 @@ export default function KYCApprovals() {
     } catch { /* ignore */ }
   }, [rejectDoc, user, sendAction]);
 
+  // ── Export CSV ─────────────────────────────────────────
+  const handleExport = useCallback(() => {
+    const COLS = [
+      { header: 'Name',            key: (r) => fmtName(r.name) },
+      { header: 'Status',          key: 'status' },
+      { header: 'Phone',           key: 'phone' },
+      { header: 'PAN (Masked)',    key: 'panMasked' },
+      { header: 'Bank (Masked)',   key: 'bankMasked' },
+      { header: 'Rejection Reason',key: 'rejection_reason' },
+      { header: 'Submitted At',    key: (r) => {
+        const ts = r.submittedAt;
+        if (!ts) return '';
+        const d = ts?.toDate ? ts.toDate() : new Date(ts);
+        return d.toISOString().slice(0, 16).replace('T', ' ');
+      }},
+      { header: 'Approved By',     key: 'approvedBy' },
+      { header: 'Doc ID',          key: 'id' },
+    ];
+    const label = filter === 'All Statuses' ? 'all' : filter.toLowerCase();
+    exportCsv(`kyc_queue_${label}`, COLS, filtered);
+  }, [filtered, filter]);
+
   return (
     <div className="flex h-screen bg-[#f6f8fb] overflow-hidden font-inter">
       <Sidebar activePage="KYC Approvals" />
@@ -400,7 +423,10 @@ export default function KYCApprovals() {
                 </select>
               </div>
               <div className="flex items-center gap-3">
-                <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer">
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer"
+                >
                   <Download size={16} />Export CSV
                 </button>
                 <button className="flex items-center gap-2 px-6 py-2.5 bg-[#1a2f55] text-white rounded-lg text-sm font-bold hover:bg-[#142445] transition-all shadow-lg shadow-brand-blue/20 cursor-pointer group">

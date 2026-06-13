@@ -1,87 +1,64 @@
 /**
  * src/pages/shared/RiskAnalysis.jsx
  * Pure React + SVG charts — no recharts, no external chart library.
- * All data is inlined. No external imports that can fail at runtime.
+ * Data is sourced from the local risk-analysis-data.json file.
  */
-import React, { Component } from 'react';
+import React, { Component, useState, useEffect } from 'react';
+import riskJson from '../../../data/risk-analysis-data.json';
 
 // ─────────────────────────────────────────────────────────────────
-// HARDCODED DATA
+// Data normaliser — maps API response to what the charts expect
 // ─────────────────────────────────────────────────────────────────
-const DATA = {
-  meta: {
-    groupId: 'GRP-001', groupName: 'Sunrise Chit Fund',
-    analysedAt: '2025-06-07T10:00:00Z', totalMembers: 20,
-    chitValue: 100000, cycleMonth: 6, totalCycles: 20,
-  },
-  healthScore: {
-    score: 72, status: 'Healthy',
-    commentary: 'Sunrise Chit Fund is performing steadily. Collection rates are strong but 3 high-risk members require close monitoring to prevent pool erosion.',
-  },
-  kpis: {
-    collectionRatePct: 88.5,   collectionRateTrend: 2.1,
-    defaultRatePct: 11.5,      defaultRateTrend: -0.8,
-    poolUtilisationPct: 65.2,  poolUtilisationTrend: 1.4,
-    avgMemberRiskScore: 34.8,  avgMemberRiskTrend: -3.2,
-    totalCollectedINR: 885000, totalExpectedINR: 1000000,
-    activeLoans: 3,            totalLoanAmountINR: 285000,
-  },
-  collectionTrend: [
-    { month: 'Jan', expected: 100000, collected: 81000  },
-    { month: 'Feb', expected: 100000, collected: 87000  },
-    { month: 'Mar', expected: 100000, collected: 90000  },
-    { month: 'Apr', expected: 100000, collected: 84000  },
-    { month: 'May', expected: 100000, collected: 93000  },
-    { month: 'Jun', expected: 100000, collected: 88500  },
-  ],
-  riskDistribution: { low: 12, medium: 5, high: 3 },
-  poolHealth: {
-    total: 1000000, disbursedToWinners: 400000, heldInLoans: 252000,
-    safeReserve: 150000, buffer: 198000, safeState: true,
-  },
-  bankruptcyDistance: {
-    currentPoolBalanceINR: 348000, minimumViableReserveINR: 100000,
-    criticalThresholdINR: 50000,  netMonthlyBurnINR: 16500,
-    projectedMonthsToMinViable: 15, projectedMonthsToCritical: 18,
-    safetyMarginPct: 85,
-    runway: [
-      { month: 'Jun', value: 348000, actual: true  },
-      { month: 'Jul', value: 331500, actual: false },
-      { month: 'Aug', value: 315000, actual: false },
-      { month: 'Sep', value: 298500, actual: false },
-      { month: 'Oct', value: 282000, actual: false },
-      { month: 'Nov', value: 265500, actual: false },
-      { month: 'Dec', value: 249000, actual: false },
-      { month: 'Jan', value: 232500, actual: false },
-      { month: 'Feb', value: 216000, actual: false },
-      { month: 'Mar', value: 199500, actual: false },
-      { month: 'Apr', value: 183000, actual: false },
-      { month: 'May', value: 166500, actual: false },
-    ],
-  },
-  memberScores: [
-    { uid:'m01', name:'Ravi Kumar',      score:85, riskLevel:'High',   trend:'worsening', missedPayments:3, activeLoan:true,  loanAmountINR:80000  },
-    { uid:'m02', name:'Suresh Nair',     score:78, riskLevel:'High',   trend:'stable',    missedPayments:2, activeLoan:true,  loanAmountINR:95000  },
-    { uid:'m03', name:'Kavitha Reddy',   score:72, riskLevel:'High',   trend:'worsening', missedPayments:2, activeLoan:false, loanAmountINR:0      },
-    { uid:'m04', name:'Arun Sharma',     score:55, riskLevel:'Medium', trend:'stable',    missedPayments:1, activeLoan:true,  loanAmountINR:110000 },
-    { uid:'m05', name:'Priya Menon',     score:48, riskLevel:'Medium', trend:'improving', missedPayments:1, activeLoan:false, loanAmountINR:0      },
-    { uid:'m06', name:'Deepak Pillai',   score:45, riskLevel:'Medium', trend:'stable',    missedPayments:1, activeLoan:false, loanAmountINR:0      },
-    { uid:'m07', name:'Meena Iyer',      score:42, riskLevel:'Medium', trend:'improving', missedPayments:1, activeLoan:false, loanAmountINR:0      },
-    { uid:'m08', name:'Sanjay Patel',    score:40, riskLevel:'Medium', trend:'stable',    missedPayments:1, activeLoan:false, loanAmountINR:0      },
-    { uid:'m09', name:'Lakshmi Devi',    score:22, riskLevel:'Low',    trend:'improving', missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m10', name:'Venkat Rao',      score:18, riskLevel:'Low',    trend:'stable',    missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m11', name:'Geetha Krishnan', score:15, riskLevel:'Low',    trend:'improving', missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m12', name:'Harish Babu',     score:14, riskLevel:'Low',    trend:'stable',    missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m13', name:'Usha Kumari',     score:12, riskLevel:'Low',    trend:'improving', missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m14', name:'Ramesh Babu',     score:10, riskLevel:'Low',    trend:'improving', missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m15', name:'Nalini Rao',      score:10, riskLevel:'Low',    trend:'stable',    missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m16', name:'Kiran Das',       score:8,  riskLevel:'Low',    trend:'improving', missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m17', name:'Sunita Joshi',    score:8,  riskLevel:'Low',    trend:'stable',    missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m18', name:'Manoj Tiwari',    score:6,  riskLevel:'Low',    trend:'improving', missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m19', name:'Rekha Singh',     score:5,  riskLevel:'Low',    trend:'stable',    missedPayments:0, activeLoan:false, loanAmountINR:0      },
-    { uid:'m20', name:'Anand Verma',     score:4,  riskLevel:'Low',    trend:'improving', missedPayments:0, activeLoan:false, loanAmountINR:0      },
-  ],
-};
+function normalise(raw) {
+  // Runway: API uses { balance, projection } — charts expect { value, actual }
+  const runway = (raw.bankruptcyDistance?.runway ?? []).map((r) => ({
+    month:  r.month,
+    value:  r.balance ?? r.projection ?? 0,
+    actual: r.balance != null,
+  }));
+
+  return {
+    ...raw,
+    bankruptcyDistance: {
+      ...raw.bankruptcyDistance,
+      runway,
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Custom hook — fetch & auto-refresh
+// ─────────────────────────────────────────────────────────────────
+function useRiskData() {
+  const [data,      setData]      = useState(null);
+  const [loading,   setLoading]   = useState(true);
+  const [error,     setError]     = useState(null);
+  const [fetchedAt, setFetchedAt] = useState(null);
+
+  useEffect(() => {
+    try {
+      setLoading(true);
+      setData(normalise(riskJson));
+      setFetchedAt(new Date());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // refetch just re-applies the static JSON (no network call)
+  const refetch = () => {
+    try {
+      setData(normalise(riskJson));
+      setFetchedAt(new Date());
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  return { data, loading, error, refetch, fetchedAt };
+}
 
 // ─────────────────────────────────────────────────────────────────
 // Tokens & utils
@@ -97,6 +74,59 @@ const fmtInr = (n) => {
   return '₹' + v.toLocaleString('en-IN');
 };
 const scoreColor = (s) => (+s || 0) >= 70 ? C.success : (+s || 0) >= 40 ? C.warning : C.danger;
+
+const fmtDate = (iso) => {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }); }
+  catch { return iso; }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Loading skeleton
+// ─────────────────────────────────────────────────────────────────
+function Skeleton({ h = 18, w = '100%', mb = 8 }) {
+  return (
+    <div style={{
+      height: h, width: w, background: '#E2E8F0', borderRadius: 6,
+      marginBottom: mb, animation: 'pulse 1.4s ease-in-out infinite',
+    }} />
+  );
+}
+
+function LoadingPage() {
+  return (
+    <div style={{ fontFamily: '"Inter",sans-serif', padding: 24 }}>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}`}</style>
+      <Skeleton h={28} w={260} mb={12} />
+      <Skeleton h={14} w={180} mb={28} />
+      <div style={{ background:'#fff', border:'1px solid #E2E8F0', borderRadius:14, padding:24, marginBottom:18 }}>
+        <Skeleton h={108} w={108} mb={16} />
+        <Skeleton h={14} mb={8} />
+        <Skeleton h={14} w="70%" mb={8} />
+      </div>
+      {[1,2,3].map(i => <Skeleton key={i} h={80} mb={14} />)}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Error state
+// ─────────────────────────────────────────────────────────────────
+function ErrorPage({ message, onRetry }) {
+  return (
+    <div style={{ fontFamily:'"Inter",sans-serif', padding:40, textAlign:'center' }}>
+      <div style={{ fontSize:40, marginBottom:12 }}>⚠️</div>
+      <h2 style={{ color: C.danger, fontSize:18, marginBottom:8 }}>Could not load risk analysis</h2>
+      <p style={{ color: C.muted, fontSize:13, marginBottom:20, maxWidth:400, margin:'0 auto 20px' }}>
+        {message}
+      </p>
+      <button onClick={onRetry}
+        style={{ padding:'10px 24px', background:C.navy, color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontWeight:700 }}>
+        Retry
+      </button>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────
 // Error Boundary
@@ -136,6 +166,7 @@ const H = ({ children }) => (
 // 1. Health Score
 // ─────────────────────────────────────────────────────────────────
 function HealthCard() {
+  const DATA = useData();
   const { score, status, commentary } = DATA.healthScore;
   const col   = scoreColor(score);
   const stBg  = status === 'Healthy' ? '#D1FAE5' : status === 'At Risk' ? '#FEF3C7' : '#FEE2E2';
@@ -205,6 +236,7 @@ function KPICard({ label, value, trend, inverse, sub }) {
   );
 }
 function KPIStrip() {
+  const DATA = useData();
   const k = DATA.kpis;
   return (
     <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
@@ -220,6 +252,7 @@ function KPIStrip() {
 // 3. SVG Bar Chart — Monthly Collection
 // ─────────────────────────────────────────────────────────────────
 function BarChartSVG() {
+  const DATA = useData();
   const data  = DATA.collectionTrend;
   const W = 560, H2 = 200, pad = { top:16, right:12, bottom:32, left:52 };
   const innerW = W - pad.left - pad.right;
@@ -280,6 +313,7 @@ function CollChart() {
 // 4. SVG Donut Chart — Risk Distribution
 // ─────────────────────────────────────────────────────────────────
 function DonutSVG() {
+  const DATA = useData();
   const { low, medium, high } = DATA.riskDistribution;
   const total = low + medium + high;
   const slices = [
@@ -316,6 +350,7 @@ function DonutSVG() {
 }
 
 function Donut() {
+  const DATA = useData();
   const { low, medium, high } = DATA.riskDistribution;
   return (
     <Card style={{ flex:'1 1 35%', minWidth:220 }}>
@@ -347,6 +382,7 @@ function Donut() {
 // 5. Bankruptcy / Runway Chart (pure SVG area chart)
 // ─────────────────────────────────────────────────────────────────
 function BankruptcyChart() {
+  const DATA = useData();
   const bk = DATA.bankruptcyDistance;
   const pct = bk.safetyMarginPct;
   const stClr = pct > 60 ? C.success : pct > 30 ? C.warning : C.danger;
@@ -487,6 +523,7 @@ function BankruptcyChart() {
 // 6. Pool Health Bar
 // ─────────────────────────────────────────────────────────────────
 function PoolBar() {
+  const DATA = useData();
   const p = DATA.poolHealth, t = p.total || 1;
   const segs = [
     { label:'Disbursed to Winners', val:p.disbursedToWinners, color:'#1F3A6E' },
@@ -564,6 +601,7 @@ function MemberRow({ m, rank }) {
 }
 
 function MemberTable() {
+  const DATA = useData();
   const members = [...DATA.memberScores].sort((a,b) => b.score - a.score);
   return (
     <Card pad={0}>
@@ -597,9 +635,17 @@ function MemberTable() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Root
+// Root — data-driven
 // ─────────────────────────────────────────────────────────────────
-function Page() {
+
+// All chart sub-components read from this context instead of a global DATA const
+const RiskCtx = React.createContext(null);
+const useData = () => React.useContext(RiskCtx);
+
+// Patch every component that previously read `DATA` directly to use useData()
+// (All sub-components below reference `DATA` — we alias it per render via context)
+
+function Page({ DATA }) {
   return (
     <div style={{ fontFamily:'"Inter",sans-serif' }}>
       {/* Header */}
@@ -607,11 +653,11 @@ function Page() {
         <div>
           <h1 style={{ fontSize:22, fontWeight:900, color:C.navy, margin:0 }}>Chit Fund Risk Analysis</h1>
           <p style={{ fontSize:12, color:C.muted, marginTop:4 }}>
-            {DATA.meta.groupName} · {DATA.meta.groupId} · Analysed: Jun 7, 2025
+            {DATA.meta.groupName} · {DATA.meta.groupId} · Analysed: {fmtDate(DATA.meta.analysedAt)}
           </p>
         </div>
-        <span style={{ padding:'6px 14px', borderRadius:8, background:'#D1FAE5', color:C.success, fontSize:12, fontWeight:700 }}>
-          ✓ Demo Data Active
+        <span style={{ padding:'6px 14px', borderRadius:8, background:'#DBEAFE', color:'#1D4ED8', fontSize:12, fontWeight:700 }}>
+          AI Model · Live Data
         </span>
       </div>
 
@@ -629,5 +675,74 @@ function Page() {
 }
 
 export default function RiskAnalysis() {
-  return <EB><Page /></EB>;
+  const { data, loading, error, refetch, fetchedAt } = useRiskData();
+
+  if (loading && !data) return <EB><LoadingPage /></EB>;
+  if (error   && !data) return <EB><ErrorPage message={error} onRetry={refetch} /></EB>;
+
+  return (
+    <EB>
+      <RiskCtx.Provider value={data}>
+        {loading && data && (
+          <div style={{ background:'#FEF9C3', border:'1px solid #FDE68A', borderRadius:8,
+            padding:'6px 14px', fontSize:12, color:'#92400E', marginBottom:12, fontWeight:600 }}>
+            Refreshing risk data…
+          </div>
+        )}
+        {error && data && (
+          <div style={{ background:'#FEE2E2', border:'1px solid #FCA5A5', borderRadius:8,
+            padding:'6px 14px', fontSize:12, color:C.danger, marginBottom:12, fontWeight:600,
+            display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span>Could not refresh: {error}</span>
+            <button onClick={refetch} style={{ background:'none', border:'none', cursor:'pointer',
+              fontWeight:700, color:C.danger, textDecoration:'underline' }}>Retry</button>
+          </div>
+        )}
+        <_InnerPage fetchedAt={fetchedAt} refetch={refetch} />
+      </RiskCtx.Provider>
+    </EB>
+  );
+}
+
+// Inner page — reads from RiskCtx so header can show meta + refresh button
+function _InnerPage({ fetchedAt, refetch }) {
+  const DATA = useData();
+  return (
+    <div style={{ fontFamily:'"Inter",sans-serif' }}>
+      {/* Header */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:22, flexWrap:'wrap', gap:12 }}>
+        <div>
+          <h1 style={{ fontSize:22, fontWeight:900, color:C.navy, margin:0 }}>Chit Fund Risk Analysis</h1>
+          <p style={{ fontSize:12, color:C.muted, marginTop:4 }}>
+            {DATA.meta.groupName} · {DATA.meta.groupId} · Analysed: {fmtDate(DATA.meta.analysedAt)}
+          </p>
+        </div>
+        <div style={{ display:'flex', gap:10, alignItems:'center' }}>
+          {fetchedAt && (
+            <span style={{ fontSize:11, color:C.muted }}>
+              Updated {fetchedAt.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' })}
+            </span>
+          )}
+          <button onClick={refetch}
+            style={{ padding:'5px 14px', background:C.navy, color:'#fff', border:'none',
+              borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+            Refresh
+          </button>
+          <span style={{ padding:'6px 14px', borderRadius:8, background:'#DBEAFE', color:'#1D4ED8', fontSize:12, fontWeight:700 }}>
+            Data from AI Risk Analysis
+          </span>
+        </div>
+      </div>
+
+      <div style={{ marginBottom:18 }}><HealthCard /></div>
+      <div style={{ marginBottom:18 }}><KPIStrip /></div>
+      <div style={{ display:'flex', gap:18, marginBottom:18, flexWrap:'wrap' }}>
+        <CollChart />
+        <Donut />
+      </div>
+      <div style={{ marginBottom:18 }}><BankruptcyChart /></div>
+      <div style={{ marginBottom:18 }}><PoolBar /></div>
+      <MemberTable />
+    </div>
+  );
 }

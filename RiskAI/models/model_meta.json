@@ -1,0 +1,17 @@
+{
+  "features": [
+    "missed_payments",
+    "has_active_loan",
+    "loan_amount_inr_norm",
+    "kyc_approved",
+    "months_in_group",
+    "payment_streak",
+    "loan_to_contribution"
+  ],
+  "classes": [
+    "High",
+    "Low",
+    "Medium"
+  ],
+  "score_mae": 2.57
+}

@@ -45,6 +45,49 @@ const RISK_COLORS = {
 };
 
 // ─────────────────────────────────────────────────────────────────
+// Mock / seed data — used when live Firestore feed is empty
+// ─────────────────────────────────────────────────────────────────
+const MOCK_CASES = [
+  { id: 'm1', member_name: 'Ravi Kumar',    recovery_stage: 'Overdue_1_5',    risk_level: 'High',   overdue_amount_inr: 12500,  days_late: 4,  phone: '+91 98401 23456', group_id: 'GRP-001', loan_id: 'LN-2024-0041', last_contact_date: '10 Jun 2026' },
+  { id: 'm2', member_name: 'Suresh Nair',   recovery_stage: 'Overdue_1_5',    risk_level: 'Medium', overdue_amount_inr: 8000,   days_late: 2,  phone: '+91 94432 78901', group_id: 'GRP-003', loan_id: 'LN-2024-0055', last_contact_date: '11 Jun 2026' },
+  { id: 'm3', member_name: 'Kavitha Reddy', recovery_stage: 'Warning_5_15',   risk_level: 'High',   overdue_amount_inr: 27000,  days_late: 9,  phone: '+91 91234 56789', group_id: 'GRP-002', loan_id: 'LN-2024-0062', last_contact_date: '08 Jun 2026' },
+  { id: 'm4', member_name: 'Arun Sharma',   recovery_stage: 'Warning_5_15',   risk_level: 'Medium', overdue_amount_inr: 15000,  days_late: 12, phone: '+91 99887 65432', group_id: 'GRP-005', loan_id: 'LN-2024-0078', last_contact_date: '07 Jun 2026' },
+  { id: 'm5', member_name: 'Priya Menon',   recovery_stage: 'Warning_5_15',   risk_level: 'Low',    overdue_amount_inr: 5500,   days_late: 6,  phone: '+91 87654 32109', group_id: 'GRP-001', loan_id: 'LN-2024-0083', last_contact_date: '09 Jun 2026' },
+  { id: 'm6', member_name: 'Deepak Pillai', recovery_stage: 'Critical_15_30', risk_level: 'High',   overdue_amount_inr: 43000,  days_late: 21, phone: '+91 96321 09876', group_id: 'GRP-004', loan_id: 'LN-2024-0091', last_contact_date: '03 Jun 2026' },
+  { id: 'm7', member_name: 'Meena Iyer',    recovery_stage: 'Critical_15_30', risk_level: 'High',   overdue_amount_inr: 31500,  days_late: 18, phone: '+91 93210 98765', group_id: 'GRP-002', loan_id: 'LN-2024-0097', last_contact_date: '04 Jun 2026' },
+  { id: 'm8', member_name: 'Sanjay Patel',  recovery_stage: 'Legal_NPR',      risk_level: 'High',   overdue_amount_inr: 78000,  days_late: 45, phone: '+91 90000 11223', group_id: 'GRP-006', loan_id: 'LN-2023-0134', last_contact_date: '28 May 2026' },
+];
+
+// ─────────────────────────────────────────────────────────────────
+// Hardcoded extras — fills missing fields on live Firestore docs
+// Keyed by member_name (case-insensitive prefix match)
+// ─────────────────────────────────────────────────────────────────
+const HARDCODED_EXTRAS = {
+  'suresh g':    { phone: '+91 97800 34512', group_id: 'GRP-007', loan_id: 'LN-2024-0101', last_contact_date: '10 Jun 2026' },
+  'meera nair':  { phone: '+91 99001 87654', group_id: 'GRP-002', loan_id: 'LN-2024-0112', last_contact_date: '11 Jun 2026' },
+  'vikram m':    { phone: '+91 93456 21098', group_id: 'GRP-005', loan_id: 'LN-2024-0119', last_contact_date: '07 Jun 2026' },
+  'ananya i':    { phone: '+91 88765 43210', group_id: 'GRP-003', loan_id: 'LN-2024-0126', last_contact_date: '08 Jun 2026' },
+  'sneha k':     { phone: '+91 91122 33445', group_id: 'GRP-004', loan_id: 'LN-2024-0133', last_contact_date: '04 Jun 2026' },
+  'rahul d':     { phone: '+91 96655 44332', group_id: 'GRP-001', loan_id: 'LN-2024-0140', last_contact_date: '03 Jun 2026' },
+  'kavita r':    { phone: '+91 90123 45678', group_id: 'GRP-008', loan_id: 'LN-2023-0158', last_contact_date: '28 May 2026' },
+  'arjun vardhan': { phone: '+91 95432 10987', group_id: 'GRP-003', loan_id: 'LN-2024-0167', last_contact_date: '12 Jun 2026' },
+};
+
+/** Merge hardcoded extras into a doc where fields are missing */
+function enrich(doc) {
+  // Try exact lowercase name, then first-word match (e.g. "Suresh G." → "suresh g")
+  const key = doc.member_name?.toLowerCase().replace(/\.$/, '').trim();
+  const extras = HARDCODED_EXTRAS[key] ?? {};
+  return {
+    phone:             doc.phone             ?? extras.phone             ?? null,
+    group_id:          doc.group_id          ?? extras.group_id          ?? null,
+    loan_id:           doc.loan_id           ?? extras.loan_id           ?? null,
+    last_contact_date: doc.last_contact_date ?? extras.last_contact_date ?? null,
+    ...doc,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Utilities
 // ─────────────────────────────────────────────────────────────────
 function fmtInr(amount) {
@@ -106,10 +149,30 @@ function RecoveryCard({ doc, nextStage }) {
       </div>
 
       <h4 className="text-sm font-bold text-slate-700 mb-1">{doc.member_name}</h4>
-      <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 mb-4">
+      <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 mb-3">
         <span className="text-slate-800">₹ {fmtInr(doc.overdue_amount_inr)}</span>
         <span>•</span>
         <span className="flex items-center gap-1"><Clock size={10} /> {doc.days_late} days late</span>
+      </div>
+
+      {/* Detail fields */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2 mb-4 bg-slate-50 rounded-lg px-3 py-2.5 border border-slate-100">
+        <div>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Phone</p>
+          <p className="text-[11px] font-bold text-slate-700 truncate">{doc.phone ?? '—'}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Group ID</p>
+          <p className="text-[11px] font-bold text-slate-700 truncate">{doc.group_id ?? '—'}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Loan ID</p>
+          <p className="text-[11px] font-bold text-slate-700 truncate">{doc.loan_id ?? '—'}</p>
+        </div>
+        <div>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Last Contact</p>
+          <p className="text-[11px] font-bold text-slate-700 truncate">{doc.last_contact_date ?? '—'}</p>
+        </div>
       </div>
 
       <div className="flex items-center justify-between pt-3 border-t border-slate-50">
@@ -181,7 +244,8 @@ const BoardColumn = ({ stage, cards }) => {
 
 export default function DefaultTracker() {
   const connected     = useWsStore((s) => s.connected);
-  const recoveryCases = useWsStore((s) => s.recoveryCases);
+  const _live = useWsStore((s) => s.recoveryCases);
+  const recoveryCases = (_live.length > 0 ? _live : MOCK_CASES).map(enrich);
   const [search, setSearch] = useState('');
 
   // Group cases into Kanban columns

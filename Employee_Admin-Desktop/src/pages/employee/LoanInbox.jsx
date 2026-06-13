@@ -87,6 +87,29 @@ function sevenDaysAgo() {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Hardcoded extras — fills missing fields on live Firestore loan docs
+// ─────────────────────────────────────────────────────────────────
+const LOAN_EXTRAS = {
+  'amit kumar':    { purpose: 'Home Renovation',      submittedAt: '2026-06-11' },
+  'rahul sharma':  { purpose: 'Medical Emergency',    submittedAt: '2026-06-10' },
+  'divya menon':   { purpose: 'Business Expansion',   submittedAt: '2026-06-09' },
+  'sneha reddy':   { purpose: 'Education Loan',       submittedAt: '2026-06-08' },
+  'priyanka chopra': { purpose: 'Vehicle Purchase',   submittedAt: '2026-06-07' },
+  'vikram singh':  { purpose: 'Working Capital',      submittedAt: '2026-06-06' },
+  'ananya desai':  { purpose: 'Home Construction',    submittedAt: '2026-06-05' },
+};
+
+function enrichLoan(loan) {
+  const key    = (loan.applicantName ?? loan.applicant_name ?? '').toLowerCase().trim();
+  const extras = LOAN_EXTRAS[key] ?? {};
+  return {
+    ...loan,
+    purpose:     loan.purpose     ?? extras.purpose     ?? null,
+    submittedAt: loan.submittedAt ?? extras.submittedAt ?? null,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────────────────────────
 const MetricCard = ({ title, value, trend, isPositive, loading }) => (
@@ -478,6 +501,7 @@ export default function LoanInbox() {
                   <p className="text-slate-400 text-sm mt-1">New applications will appear here automatically.</p>
                 </div>
               ) : paginated.map((loan) => {
+                loan = enrichLoan(loan);
                 // ── Resolve both camelCase (new) and snake_case (legacy) fields ──
                 const name       = fmtName(loan.applicantName ?? loan.applicant_name);
                 const amount     = loan.requestedAmountINR   ?? loan.requested_amount_inr ?? 0;

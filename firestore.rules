@@ -71,16 +71,28 @@ service cloud.firestore {
     }
 
     // ── bids/{bidId} ────────────────────────────────────────────────────────
-    // Members read their own bids; staff reads all.
-    // No direct client writes — all via Backend Admin SDK.
+    // Members read all bids; write their own bids directly (no backend needed).
+    // Staff reads/writes all.
     match /bids/{bidId} {
       allow read: if request.auth != null;
-      allow write: if isStaff();
+      // Members can create a bid where bidderUid == their own UID
+      allow create: if request.auth != null &&
+                       request.resource.data.bidderUid == request.auth.uid;
+      // Members can update their own existing bids
+      allow update: if request.auth != null &&
+                       resource.data.bidderUid == request.auth.uid;
+      allow delete: if isStaff();
     }
 
     // ── groups/{groupId} ────────────────────────────────────────────────────
     match /groups/{groupId} {
       allow read:  if request.auth != null;
+      allow write: if isStaff();
+    }
+
+    // ── recovery_cases ──────────────────────────────────────────────────────
+    match /recovery_cases/{docId} {
+      allow read:  if isStaff();
       allow write: if isStaff();
     }
   }

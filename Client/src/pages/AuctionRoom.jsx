@@ -214,7 +214,7 @@ function OpenAuction({ auction, bids, myBid, timeLeft, hasWon, placeBid }) {
     return n ? `Member ${n}` : `Member ${bid.bidderUid?.slice(0, 4).toUpperCase()}`;
   };
 
-  const handleBid = (e) => {
+  const handleBid = async (e) => {
     e.preventDefault();
     setError('');
     const amt = parseInt(amount, 10);
@@ -224,7 +224,9 @@ function OpenAuction({ auction, bids, myBid, timeLeft, hasWon, placeBid }) {
     }
     try {
       setSubmitting(true);
-      placeBid(amt);
+      await placeBid(amt);
+      setAmount('');   // clear on success
+      setSubmitting(false);
     } catch (err) {
       setError(err.message);
       setSubmitting(false);

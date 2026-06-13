@@ -15,8 +15,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  collection, query, where, onSnapshot,
-  orderBy, limit, doc,
+  collection, query, where, onSnapshot, doc,
+  addDoc, getDocs, updateDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { db }          from '../lib/firebase';
 import useAuthStore    from '../store/authStore';
@@ -55,50 +55,54 @@ export default function useAuction() {
     return () => unsub();
   }, [uid]);
 
-  // ── Effect 1: auctions onSnapshot ─────────────────────────────
-  // Query all auction statuses so we can show result screens for
-  // recently closed/cancelled auctions. Filter by groupId in JS.
+  // ── Effect 1: auctions onSnapshot ───────────────────────────────
+  // Fetch the FULL auctions collection client-side — no composite
+  // Firestore index required (avoids silent query failures).
   useEffect(() => {
     if (!uid) return;
 
-    // Fetch ALL auctions for this group (no status filter) — we pick
-    // the most relevant one in JS. Firestore will use the auto-index on groupId.
-    // Fallback: if no groupId yet, show any non-closed active auction.
-    const q = query(
+    const ACTIVE_STATUSES = new Set(['scheduled', 'open', 'closed', 'cancelled']);
+
+    const unsub = onSnapshot(
       collection(db, 'auctions'),
-      where('status', 'in', ['scheduled', 'open', 'closed', 'cancelled'])
-    );
+      (snap) => {
+        const all = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((a) => ACTIVE_STATUSES.has(a.status));
 
-    const unsub = onSnapshot(q, (snap) => {
-      const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        console.log('[useAuction] auctions fetched:', all.length, 'groupId:', groupId);
 
-      // Filter to this user's group if we know it; otherwise show all.
-      const mine = groupId ? all.filter((a) => a.groupId === groupId) : all;
+        // Filter to this user's group if known; otherwise show all (avoids
+        // blank screen while the users/{uid} doc is still loading).
+        const mine = groupId
+          ? all.filter((a) => a.groupId === groupId || a.group_id === groupId)
+          : all;
 
-      if (mine.length === 0) {
+        if (mine.length === 0) {
+          setAuction(null);
+          return;
+        }
+
+        // Priority: open > scheduled > most-recently-closed/cancelled
+        const active =
+          mine.find((a) => a.status === 'open') ||
+          mine.find((a) => a.status === 'scheduled') ||
+          mine
+            .filter((a) => a.status === 'closed' || a.status === 'cancelled')
+            .sort((a, b) => {
+              const ta = a.closedAt?.toDate?.()?.getTime() ?? new Date(a.closedAt ?? 0).getTime();
+              const tb = b.closedAt?.toDate?.()?.getTime() ?? new Date(b.closedAt ?? 0).getTime();
+              return tb - ta;
+            })[0] ||
+          null;
+
+        setAuction(active);
+      },
+      (err) => {
+        console.error('[useAuction] auctions snapshot error:', err);
         setAuction(null);
-        return;
       }
-
-      // Priority: open > scheduled > most-recently-closed/cancelled
-      const active =
-        mine.find((a) => a.status === 'open') ||
-        mine.find((a) => a.status === 'scheduled') ||
-        // Pick the most recently closed/cancelled (latest closedAt)
-        mine
-          .filter((a) => a.status === 'closed' || a.status === 'cancelled')
-          .sort((a, b) => {
-            const ta = a.closedAt?.toDate?.()?.getTime() ?? new Date(a.closedAt ?? 0).getTime();
-            const tb = b.closedAt?.toDate?.()?.getTime() ?? new Date(b.closedAt ?? 0).getTime();
-            return tb - ta;
-          })[0] ||
-        null;
-
-      setAuction(active);
-    }, (err) => {
-      console.error('[useAuction] auctions error:', err);
-      setAuction(null);
-    });
+    );
 
     return () => unsub();
   }, [uid, groupId]); // re-runs when groupId resolves from users/{uid}
@@ -200,8 +204,10 @@ export default function useAuction() {
   // Cleanup timer on unmount
   useEffect(() => () => clearInterval(timerRef.current), []);
 
-  // ── placeBid ──────────────────────────────────────────────────
-  const placeBid = useCallback((bidAmountINR) => {
+  // ── placeBid ────────────────────────────────────────────
+  // Primary: write directly to Firestore (works without backend).
+  // Secondary: fire-and-forget WS broadcast (real-time push when online).
+  const placeBid = useCallback(async (bidAmountINR) => {
     if (!auction || auction.status !== 'open') {
       throw new Error('No active auction open for bidding');
     }
@@ -212,33 +218,50 @@ export default function useAuction() {
     if (isNaN(amount) || amount <= 0) {
       throw new Error('Invalid bid amount');
     }
-    if (amount >= auction.potAmountINR) {
-      throw new Error(`Bid must be less than ₹${auction.potAmountINR.toLocaleString('en-IN')}`);
-    }
 
-    const discountOffered = auction.potAmountINR - amount;
-    const discountPct     = parseFloat(
-      ((discountOffered / auction.potAmountINR) * 100).toFixed(2)
+    // ── Upsert bid in Firestore ────────────────────────────────
+    const bidsRef = collection(db, 'bids');
+    const existing = await getDocs(
+      query(bidsRef,
+        where('auctionId', '==', auction.id),
+        where('bidderUid', '==', uid)
+      )
     );
 
+    if (!existing.empty) {
+      // Update existing bid
+      await updateDoc(existing.docs[0].ref, {
+        bidAmountINR: amount,
+        placedAt:     serverTimestamp(),
+      });
+    } else {
+      // Create new bid
+      await addDoc(bidsRef, {
+        auctionId:    auction.id,
+        groupId:      auction.groupId ?? groupId,
+        bidderUid:    uid,
+        bidderName:   displayName,
+        bidAmountINR: amount,
+        placedAt:     serverTimestamp(),
+        isWinning:    false,
+      });
+    }
+
+    // ── Fire-and-forget WS broadcast (optional) ─────────────────
     try {
       sendAction({
         channel: 'auction_room',
         action:  'place_bid',
         payload: {
-          auctionId:       auction.id,
-          groupId:         auction.groupId,
-          bidderUid:       uid,
-          bidderName:      displayName,
-          bidAmountINR:    amount,
-          discountOffered,
-          discountPct,
+          auctionId:    auction.id,
+          groupId:      auction.groupId ?? groupId,
+          bidderUid:    uid,
+          bidderName:   displayName,
+          bidAmountINR: amount,
         },
       });
-    } catch (err) {
-      console.error('[useAuction] sendAction error:', err);
-    }
-  }, [auction, hasWon, uid, displayName, sendAction]);
+    } catch { /* WS offline — bid already written to Firestore */ }
+  }, [auction, hasWon, uid, displayName, groupId, sendAction]);
 
   return {
     auction,
