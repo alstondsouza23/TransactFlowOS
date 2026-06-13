@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import useAuthStore   from '../store/authStore';
 import useLoanDocs    from '../hooks/useLoanDocs';
-import { useWsAction } from '../providers/WebSocketProvider';
 import { fmtName } from '../lib/fmtName';
+import { db } from '../lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Icons = {
@@ -64,7 +65,7 @@ function calcEMI(principal, months) {
 
 // ── Loan Application Form ─────────────────────────────────────────────────────
 function LoanForm({ user, financialData, onSubmitSuccess, onAmountChange, onTenureChange }) {
-  const { sendAction } = useWsAction();
+  const uid        = useAuthStore((s) => s.uid);
   const [amount,    setAmount]    = useState('');
   const [purpose,   setPurpose]   = useState('Select Purpose');
   const [tenure,    setTenure]    = useState('12 Months');
@@ -95,25 +96,31 @@ function LoanForm({ user, financialData, onSubmitSuccess, onAmountChange, onTenu
     setSubmitting(true);
     setError('');
 
-    // The WS hook sends and the useLoanDocs onSnapshot will pick up the new doc
-    sendAction({
-      channel: 'loan_inbox',
-      action:  'create_loan',
-      payload: {
-        amount:        amt,
+    try {
+      // Write directly to Firestore — no backend needed
+      await addDoc(collection(db, 'loan_applications'), {
+        applicantUid:        uid,
+        applicantName:       fmtName(user?.displayName || user?.email?.split('@')[0] || 'Member'),
+        requestedAmountINR:  amt,
         purpose,
-        tenureMonths:  months,
-        groupId:       financialData?.profile?.group_id ?? 'GRP-001',
-        applicantName: fmtName(user?.displayName || user?.email?.split('@')[0] || 'Member'),
-      },
-    });
+        tenureMonths:        months,
+        emiINR:              calcEMI(amt, months),
+        groupId:             financialData?.profile?.group_id ?? 'GRP-001',
+        status:              'Pending',
+        submittedAt:         serverTimestamp(),
+        reviewedAt:          null,
+        reviewedBy:          null,
+        rejectionReason:     null,
+      });
 
-    // Optimistic: show success immediately (Firestore onSnapshot will confirm)
-    setTimeout(() => {
       setSubmitting(false);
       onSubmitSuccess({ amount: amt, purpose, tenure });
-    }, 900);
-  }, [isValid, submitting, sendAction, amt, purpose, months, tenure, financialData, user, onSubmitSuccess]);
+    } catch (err) {
+      console.error('[LoanForm] Firestore write failed:', err);
+      setError('Failed to submit application. Please try again.');
+      setSubmitting(false);
+    }
+  }, [isValid, submitting, uid, amt, purpose, months, tenure, financialData, user, onSubmitSuccess]);
 
   return (
     <div style={s.formLeft}>
